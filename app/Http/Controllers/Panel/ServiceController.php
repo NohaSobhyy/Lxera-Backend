@@ -221,7 +221,8 @@ class ServiceController extends Controller
 
             $hasAdditionBundles = ($to_bundle && $to_bundle->additionBundles()->exists());
 
-            if ($hasAdditionBundles && ($request->want_addition == 1) && !$request->addition_bundle_id
+            if (
+                $hasAdditionBundles && ($request->want_addition == 1) && !$request->addition_bundle_id
             ) {
                 $validator->errors()->add('addition_bundle_id', 'حقل التخصص المزدوج مطلوب');
             }
@@ -233,8 +234,7 @@ class ServiceController extends Controller
             ) {
                 $validator->errors()->add('addition_bundle_id', 'انت مسجل بالفعل في هذا البرنامج');
             }
-
-            });
+        });
 
         // Validate the data
         if ($validator->fails()) {
@@ -250,7 +250,6 @@ class ServiceController extends Controller
         if ($request->addition_bundle_id && $request->want_addition == 1) {
             $toBundleId = $request->addition_bundle_id;
             $to_bundle_key = 'addition_bundle_id';
-            
         }
         $to_bundle = Bundle::find($toBundleId);
 
@@ -350,9 +349,8 @@ class ServiceController extends Controller
         if ($service->price > 0) {
 
             $bundleRequest = [
-              
-                'from_bundle_id'=>$request->from_bundle_id,
-                'to_bundle_id'=>$to_bundle->id,
+                'from_bundle_id' => $request->from_bundle_id,
+                'to_bundle_id' => $to_bundle->id,
                 'type' => $type,
                 'transform_Type' => $transformType,
                 'amount' => abs($amount)
@@ -365,8 +363,8 @@ class ServiceController extends Controller
         } else {
             $serviceRequest = ServiceUser::create(['service_id' => $service->id, 'user_id' => $user->id, 'content' => $content]);
             BundleTransform::create([
-                'from_bundle_id'=>$request->from_bundle_id,
-                'to_bundle_id'=>$to_bundle->id,
+                'from_bundle_id' => $request->from_bundle_id,
+                'to_bundle_id' => $to_bundle->id,
                 'user_id' => $user->id,
                 'service_request_id' => $serviceRequest->id,
                 'type' => $type,
@@ -577,17 +575,18 @@ class ServiceController extends Controller
 
         // return redirect('/payment/' . $order->id);
     }
-    function certificateRequest(Service $service){
+    function certificateRequest(Service $service)
+    {
 
         return view('web.default.panel.services.includes.certificate', compact('service'));
     }
-   
-    
+
+
     public function storeCertificateService(Request $request, Service $service)
     {
-        
+
         $user = auth()->user();
-    
+
         $validatedData = $request->validate([
             'ar_name' => 'required|string|max:255',
             'phone' => 'required|string|max:20',
@@ -595,12 +594,12 @@ class ServiceController extends Controller
             'address' => 'required|string|max:1000',
         ]);
 
-        $content = "تم إضافة خدمة الشهادة للعميل:\n" . 
-        "الاسم: " . $validatedData['ar_name'] . "\n" .
-        "الهاتف: " . $validatedData['phone'] . "\n" .
-        "البريد الإلكتروني: " . $validatedData['email'] . "\n" .
-        "العنوان الوطني: " . $validatedData['address'];
-    
+        $content = "تم إضافة خدمة الشهادة للعميل:\n" .
+            "الاسم: " . $validatedData['ar_name'] . "\n" .
+            "الهاتف: " . $validatedData['phone'] . "\n" .
+            "البريد الإلكتروني: " . $validatedData['email'] . "\n" .
+            "العنوان الوطني: " . $validatedData['address'];
+
         if ($service->price > 0) {
             Cookie::queue('service_content', json_encode($content));
             Cookie::queue('certificate_service_content', json_encode($validatedData));
@@ -612,21 +611,21 @@ class ServiceController extends Controller
         CertificateService::create([...$validatedData, 'user_id' => $user->id, 'service_request_id' => $serviceRequest->id]);
 
         $notifyOptions = [
-             '[u.name]' => $user?->full_name,
+            '[u.name]' => $user?->full_name,
             '[u.code]' => $user?->user_code,
             '[s.title]' => $service?->title,
         ];
-        
+
         // Example: Notify admin users about the new service request
         $adminUsers = User::where(['status' => 'active'])->whereIn('role_id', Role::$admissionRoles)->get();
         foreach ($adminUsers as $adminUser) {
             sendNotification('user_service_request', $notifyOptions, $adminUser->id);
         }
-    
+
         // Redirect back to the service requests page with a success message
         return redirect('/panel/services/requests')->with("success", "تم إضافة خدمة الشهادة بنجاح");
     }
-    
+
 
     function bundleDelayRequest(Service $service)
     {
@@ -634,7 +633,7 @@ class ServiceController extends Controller
         return view('web.default.panel.services.includes.bundleDelay', compact('service'));
     }
 
-    
+
     function bundleDelay(Request $request, Service $service)
     {
 

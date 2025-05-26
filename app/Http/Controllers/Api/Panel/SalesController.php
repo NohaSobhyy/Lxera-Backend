@@ -10,6 +10,9 @@ use Illuminate\Http\Request;
 use App\Models\Bundle;
 use App\Models\SaleLog;
 use App\Models\StudyClass;
+use App\Exports\salesExport;
+
+use Maatwebsite\Excel\Facades\Excel;
 
 class SalesController extends Controller
 {
@@ -334,5 +337,32 @@ class SalesController extends Controller
             'user_id' => $sale_id,
             'access_to_purchased_item' => $sale->access_to_purchased_item
         ], 200);
+    }
+
+        public function exportExcel(Request $request)
+    {
+        $this->authorize('admin_sales_export');
+
+        $query = Sale::query()->where('manual_added', 0);
+
+        $salesQuery = $this->getSalesFilters($query, $request);
+
+        $sales = $salesQuery->orderBy('created_at', 'desc')
+            ->with([
+                'buyer',
+                'webinar',
+                'meeting',
+                'subscribe',
+                'promotion',
+            ])
+            ->get();
+
+        foreach ($sales as $sale) {
+            $sale = $this->makeTitle($sale);
+        }
+
+        $export = new salesExport($sales);
+
+        return Excel::download($export, 'sales.xlsx');
     }
 }

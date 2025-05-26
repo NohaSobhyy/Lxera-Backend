@@ -3,7 +3,6 @@
 namespace App\Http\Controllers\Api\Panel;
 
 use App\Models\Sale;
-use App\Bitwise\UserLevelOfTraining;
 use App\Http\Controllers\Api\Controller;
 use App\Http\Resources\InstallmentResource;
 use App\Models\Category;
@@ -12,7 +11,6 @@ use App\Models\Reward;
 use App\Models\RewardAccounting;
 use App\Models\UserMeta;
 use App\Models\Follow;
-use App\Models\UserZoomApi;
 use App\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -31,13 +29,11 @@ use App\Http\Controllers\Admin\SaleController;
 use App\Models\Api\Organization;
 use App\Models\Api\Webinar;
 use App\Models\Enrollment;
-use App\Models\BecomeInstructor;
-use App\Models\ForumTopic;
-use App\Models\Region;
-use App\Models\UserBank;
-use App\Models\Badge;
-use App\Student;
-use Illuminate\Support\Facades\Log;
+use App\Exports\StudentsExport;
+use App\Models\StudyClass;
+use Maatwebsite\Excel\Facades\Excel;
+use App\Exports\EnrollersExport;
+use App\Exports\DirectRegisterExport;
 
 class UsersController extends Controller
 {
@@ -85,25 +81,6 @@ class UsersController extends Controller
 
         return apiResponse2(1, 'updated', trans('api.public.updated'));
     }
-
-    public function update(Request $request, $id)
-    {
-        Log::info('Update request received:', $request->all());
-
-        $user = User::find($id);
-
-        if (!$user) {
-            return response()->json(['message' => 'User not found'], 404);
-        }
-
-        $user->full_name = $request->input('full_name'); // Ensure this field is in your request
-        $user->save();
-
-        return response()->json(['message' => 'User updated successfully'], 200);
-    }
-
-
-
 
     private function handleNewsletter($email, $user_id, $joinNewsletter)
     {
@@ -441,6 +418,14 @@ class UsersController extends Controller
             'student.bundleStudent.bundle',
             'programTranslation'
         ])->orderBy('created_at', 'desc')->get();
+
+        if ($is_export_excel) {
+            $users = $query->orderBy('created_at', 'desc')->get();
+        } else {
+            $users = $query->orderBy('created_at', 'desc')
+                ->get();
+        }
+
         $users = $this->addUsersExtraInfo($users);
 
         $category = Category::where('parent_id', '!=', null)->get();
@@ -460,15 +445,103 @@ class UsersController extends Controller
             $user->program = $user->programTranslation ?? null;
             return $user;
         });
-        $users = $this->cleanUsersUtf8($users);
-        return response()->json([
+
+        $data = [
             'students' => $users,
             'category' => $category,
             'totalStudents' => $totalStudents,
             'inactiveStudents' => $inactiveStudents,
             'banStudents' => $banStudents,
-            'userGroups' => $userGroups,
-        ], 200);
+            'userGroups' => $userGroups
+        ];
+
+        return response()->json($data, 200, [], JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE);
+    }
+
+    public function students2(Request $request, $is_export_excel = false)
+    {
+        $this->authorize('admin_users_list');
+
+        $query = User::whereIn('role_name', [Role::$user, Role::$registered_user]);
+
+        $totalStudents = clone $query;
+        $inactiveStudents = clone $query;
+        $banStudents = clone $query;
+        $totalStudents = $totalStudents->count();
+        $inactiveStudents = $inactiveStudents->where('status', 'inactive')->count();
+        $banStudents = $banStudents
+            ->where('ban', true)
+            ->whereNotNull('ban_end_at')
+            ->where('ban_end_at', '>', time())
+            ->count();
+
+        $userGroups = Group::where('status', 'active')
+            ->orderBy('created_at', 'desc')
+            ->get();
+        $query = $this->filters($query, $request);
+
+        if ($is_export_excel) {
+            $users = $query->orderBy('created_at', 'desc')->get();
+        } else {
+            $users = $query->orderBy('created_at', 'desc')->get();
+        }
+
+        $users = $query->with([
+            'student.bundleStudent.bundle',
+            'programTranslation'
+        ])->orderBy('created_at', 'desc')->get();
+
+        if ($is_export_excel) {
+            $users = $query->orderBy('created_at', 'desc')->get();
+        } else {
+            $users = $query->orderBy('created_at', 'desc')
+                ->get();
+        }
+
+        $users = $this->addUsersExtraInfo($users);
+
+        if ($is_export_excel) {
+            return $users;
+        }
+        $category = Category::where('parent_id', '!=', null)->get();
+        $users = $users->map(function ($user) {
+            $student = $user->student;
+            if ($student) {
+                $user->student_id = $student->id;
+                $user->identity_img = $student->identity_img;
+                $user->bundles = $student->bundleStudent ? $student->bundleStudent->map(function ($bundleStudent) {
+                    return $bundleStudent->bundle;
+                }) : collect();
+            } else {
+                $user->student_id = null;
+                $user->identity_img = null;
+                $user->bundles = collect();
+            }
+            $user->program = $user->programTranslation ?? null;
+            return $user;
+        });
+
+        $data = [
+            'students' => $users,
+            'category' => $category,
+            'totalStudents' => $totalStudents,
+            'inactiveStudents' => $inactiveStudents,
+            'banStudents' => $banStudents,
+            'userGroups' => $userGroups
+        ];
+
+        return response()->json($data, 200, [], JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE);
+    }
+
+    public function exportExcelAll(Request $request)
+    {
+        $this->authorize('admin_users_export_excel');
+
+        $users = $this->students2($request, true);
+
+        $usersExport = new StudentsExport($users);
+
+        return Excel::download($usersExport, 'الطلاب.xlsx');
     }
 
     public function addUsersExtraInfo($users)
@@ -574,6 +647,24 @@ class UsersController extends Controller
         ];
 
         return response()->json($data);
+    }
+
+    public function exportExcelRegisteredUsers(Request $request)
+    {
+        $this->authorize('admin_users_export_excel');
+
+        $users = $this->RegisteredUsers($request, true);
+
+        if (!empty($request->class_id)) {
+            $studyClass = StudyClass::find($request->class_id);
+            if (!empty($studyClass)) {
+                $users = (new StudyClassController())->RegisteredUsers($request, $studyClass, true);
+            }
+        }
+
+        $usersExport = new StudentsExport($users, $request->class_id ?? null);
+
+        return Excel::download($usersExport, 'نموذج انشاء حساب.xlsx');
     }
 
     public function filters($query, $request)
@@ -792,7 +883,7 @@ class UsersController extends Controller
         return $query;
     }
 
-    public function Users(Request $request, $is_export_excel = false)
+    public function reserveSeat(Request $request, $is_export_excel = false)
     {
         $this->authorize('admin_users_list');
 
@@ -825,6 +916,24 @@ class UsersController extends Controller
         return response()->json($sales, 200, [], JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE);
     }
 
+    public function exportExcelReserveSeat(Request $request)
+    {
+        $this->authorize('admin_users_export_excel');
+
+        $users = $this->RegisteredUsers($request, true);
+
+        if (!empty($request->class_id)) {
+            $studyClass = StudyClass::find($request->class_id);
+            if (!empty($studyClass)) {
+                $users = (new StudyClassController())->RegisteredUsers($request, $studyClass, true);
+            }
+        }
+
+        $usersExport = new StudentsExport($users, $request->class_id ?? null);
+
+        return Excel::download($usersExport, 'نموذج انشاء حساب.xlsx');
+    }
+
     public function Enrollers(Request $request, $is_export_excel = false)
     {
         $this->authorize('admin_users_list');
@@ -840,12 +949,49 @@ class UsersController extends Controller
 
         $query = (new SaleController())->getSalesFilters($salaQuery, $request);
 
-        if ($is_export_excel) {
-            $sales = $query->orderBy('created_at', 'desc')->get();
-        } else {
-            $sales = $query->orderBy('created_at', 'desc')->get();
-        }
+        $sales = $query->orderBy('created_at', 'desc')->get();
+
         return response()->json($sales, 200, [], JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE);
+    }
+
+    public function Enrollers2(Request $request, $is_export_excel = false)
+    {
+        $this->authorize('admin_users_list');
+
+        $salaQuery = Sale::whereNull('refund_at')
+            ->whereNotNull(['bundle_id', 'buyer_id'])
+            ->whereHas('buyer')
+            ->whereIn('type', ['bundle', 'installment_payment', 'bridging'])
+            ->where("payment_method", "!=", 'scholarship')
+            ->with(['buyer', 'bundle'])
+            ->orderBy('buyer_id', 'desc')
+            ->groupBy(['buyer_id', 'bundle_id']);
+
+        $query = (new SaleController())->getSalesFilters($salaQuery, $request);
+
+        $sales = $query->orderBy('created_at', 'desc')->get();
+
+        if ($is_export_excel) {
+            return $sales;
+        }
+
+        return response()->json($sales, 200, [], JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE);
+    }
+
+    public function exportExcelEnrollers(Request $request)
+    {
+        $this->authorize('admin_users_export_excel');
+
+        $sales = $this->Enrollers2($request, true);
+        if (!empty($request->class_id)) {
+            $studyClass = StudyClass::find($request->class_id);
+            if (!empty($studyClass)) {
+                $sales = (new StudyClassController())->Enrollers($request, $studyClass, true);
+            }
+        }
+        $usersExport = new EnrollersExport($sales, $request->class_id ?? null);
+
+        return Excel::download($usersExport, ' تسجيل البرامج.xlsx');
     }
 
     public function directRegister(Request $request, $is_export_excel = false)
@@ -860,7 +1006,49 @@ class UsersController extends Controller
             $bundlstudents = $query->orderBy('student_id', 'desc')->orderBy('created_at', 'desc')
                 ->get();
         }
+
         return response()->json($bundlstudents, 200, [], JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE);
+    }
+
+    public function directRegister2(Request $request, $is_export_excel = false)
+    {
+        $this->authorize('admin_users_list');
+
+        $query = BundleStudent::whereHas('student')->whereNull('class_id')->with(['student.user', 'bundle']);
+
+        if ($is_export_excel) {
+            $bundlstudents = $query->orderBy('student_id', 'desc')->get();
+        } else {
+            $bundlstudents = $query->orderBy('student_id', 'desc')->orderBy('created_at', 'desc')
+                ->get();
+        }
+        if ($is_export_excel) {
+            $bundlstudents = $query->orderBy('student_id', 'desc')->get();
+        } else {
+            $bundlstudents = $query->orderBy('student_id', 'desc')->orderBy('created_at', 'desc')
+                ->get();
+        }
+
+        if ($is_export_excel) {
+            return $bundlstudents;
+        }
+        return response()->json($bundlstudents, 200, [], JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE);
+    }
+
+    public function exportExcelDirectRegister(Request $request)
+    {
+        $this->authorize('admin_users_export_excel');
+
+        $bundlstudents = $this->directRegister2($request, true);
+        if (!empty($request->class_id)) {
+            $studyClass = StudyClass::find($request->class_id);
+            if (!empty($studyClass)) {
+                $bundlstudents = (new StudyClassController())->directRegister($request, $studyClass, true);
+            }
+        }
+        $usersExport = new DirectRegisterExport($bundlstudents, $request->class_id ?? null);
+
+        return Excel::download($usersExport, ' تسجيل مباشر.xlsx');
     }
 
     public function getPurchasedClassesData($user)
@@ -1007,144 +1195,133 @@ class UsersController extends Controller
         ];
     }
 
-    public function edit(Request $request, $url_name, $id)
+    public function ScholarshipStudent(Request $request, $is_export_excel = false)
     {
-        Log::info('Request full_name: ' . $request->input('full_name'));
-        $this->authorize('admin_users_edit');
-        $organization = Organization::where('url_name', $url_name)->first();
-        if (!$organization) {
-            return response()->json(['message' => 'Cannot found this organization'], 404);
-        }
+        $this->authorize('admin_users_list');
+        $query = User::where(['role_name' => Role::$user])->whereHas('purchasedBundles', function ($query) {
+            $query->where("payment_method", 'scholarship');
+        });
 
-        $user = User::where('id', $id)
-            ->with([
-                'customBadges' => function ($query) {
-                    $query->with('badge');
-                },
-                'occupations' => function ($query) {
-                    $query->with('category');
-                },
-                'userRegistrationPackage',
-            ])
-            ->first();
+        $salaQuery = Sale::whereNull('refund_at')
+            ->whereNotNull('bundle_id')
+            ->whereHas('buyer')
+            ->whereIn('type', ['bundle', 'installment_payment', 'bridging'])
+            ->where("payment_method", "=", 'scholarship')
+            ->with(['buyer', 'bundle'])
+            ->orderBy('buyer_id', 'desc')
+            ->groupBy(['buyer_id', 'bundle_id']);
 
-        if (!$user) {
-            abort(404);
-        }
+        $query = (new SaleController())->getSalesFilters($salaQuery, $request);
 
-
-        if (!empty($user->location)) {
-            $user->location = \Geo::getST_AsTextFromBinary($user->location);
-
-            $user->location = \Geo::get_geo_array($user->location);
-        }
-
-        $userMetas = $user->userMetas;
-
-        if (!empty($userMetas)) {
-            foreach ($userMetas as $meta) {
-                $user->{$meta->name} = $meta->value;
-            }
-        }
-
-        $becomeInstructor = null;
-        if (!empty($request->get('type')) and $request->get('type') == 'check_instructor_request') {
-            $becomeInstructor = BecomeInstructor::where('user_id', $user->id)
-                ->first();
-        }
-
-        $categories = Category::where('parent_id', null)
-            ->with('subCategories')
-            ->get();
-
-        $occupations = $user->occupations->pluck('category_id')->toArray();
-
-        $userBadges = $user->getBadges(false);
-
-        $roles = Role::all();
-        $badges = Badge::all();
-
-        $userLanguages = getGeneralSettings('user_languages');
-        if (!empty($userLanguages) and is_array($userLanguages)) {
-            $userLanguages = getLanguages($userLanguages);
+        if ($is_export_excel) {
+            $sales = $query->orderBy('created_at', 'desc')->get();
         } else {
-            $userLanguages = [];
+            $sales = $query->orderBy('created_at', 'desc')->get();
         }
 
-        $provinces = null;
-        $cities = null;
-        $districts = null;
-
-        $countries = Region::select(DB::raw('*, ST_AsText(geo_center) as geo_center'))
-            ->where('type', Region::$country)
-            ->get();
-
-        if (!empty($user->country_id)) {
-            $provinces = Region::select(DB::raw('*, ST_AsText(geo_center) as geo_center'))
-                ->where('type', Region::$province)
-                ->where('country_id', $user->country_id)
-                ->get();
+        if ($is_export_excel) {
+            return $sales;
         }
-
-        if (!empty($user->province_id)) {
-            $cities = Region::select(DB::raw('*, ST_AsText(geo_center) as geo_center'))
-                ->where('type', Region::$city)
-                ->where('province_id', $user->province_id)
-                ->get();
-        }
-
-        if (!empty($user->city_id)) {
-            $districts = Region::select(DB::raw('*, ST_AsText(geo_center) as geo_center'))
-                ->where('type', Region::$district)
-                ->where('city_id', $user->city_id)
-                ->get();
-        }
-
-        $userBanks = UserBank::query()
-            ->with([
-                'specifications',
-            ])
-            ->orderBy('created_at', 'desc')
-            ->get();
 
         $data = [
-            'user' => $user,
-            'userBadges' => $userBadges,
-            'roles' => $roles,
-            'badges' => $badges,
-            'categories' => $categories,
-            'occupations' => $occupations,
-            'becomeInstructor' => $becomeInstructor,
-            'userLanguages' => $userLanguages,
-            'userRegistrationPackage' => $user->userRegistrationPackage,
-            'countries' => $countries,
-            'provinces' => $provinces,
-            'cities' => $cities,
-            'districts' => $districts,
-            'userBanks' => $userBanks,
+            'sales' => $sales,
         ];
 
-        // Purchased Classes Data
-        $data = array_merge($data, $this->getPurchasedClassesData($user));
+        return response()->json($data, 200, [], JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE);
+    }
 
-        // Purchased Bundles Data
-        $data = array_merge($data, $this->getPurchasedBundlesData($user));
+    public function exportExcelScholarship(Request $request)
+    {
+        $this->authorize('admin_users_export_excel');
 
-        // Purchased Product Data
-        $data = array_merge($data, $this->getPurchasedProductsData($user));
-
-        if (auth()->user()->can('admin_forum_topics_lists')) {
-            $data['topics'] = ForumTopic::where('creator_id', $user->id)
-                ->with([
-                    'posts' => function ($query) {
-                        $query->orderBy('created_at', 'desc');
-                    },
-                    'forum',
-                ])
-                ->withCount('posts')
-                ->orderBy('created_at', 'desc')
-                ->get();
+        $sales = $this->ScholarshipStudent($request, true);
+        if (!empty($request->class_id)) {
+            $studyClass = StudyClass::find($request->class_id);
+            if (!empty($studyClass)) {
+                $sales = (new StudyClassController())->ScholarshipStudent($request, $studyClass, true);
+            }
         }
-        return $data;
+        $usersExport = new EnrollersExport($sales, $request->class_id ?? null);
+
+        return Excel::download($usersExport, ' تسجيل المنح الدراسية.xlsx');
+    }
+
+    public function update(Request $request, $url_name, $id)
+    {
+        try {
+            $this->authorize('admin_users_edit');
+
+            $organization = Organization::where('url_name', $url_name)->firstOrFail();
+            if (!$organization) {
+                return response()->json(['message' => 'Organization not found'], 404);
+            }
+            $user = User::findOrFail($id);
+            if (!$user) {
+                return response()->json(['message' => 'User not found'], 404);
+            }
+            $rules = [
+                'full_name' => 'sometimes|min:3|max:128',
+                'role_id' => 'sometimes|exists:roles,id',
+                'email' => 'sometimes|email|unique:users,email,' . $user->id . ',id,deleted_at,NULL',
+                'mobile' => 'sometimes|numeric|unique:users,mobile,' . $user->id . ',id,deleted_at,NULL',
+                'password' => 'sometimes|string',
+                'bio' => 'sometimes|string|min:3|max:48',
+                'about' => 'sometimes|string|min:3',
+                'certificate_additional' => 'sometimes|string|max:255',
+                'status' => ['sometimes', Rule::in(User::$statuses)],
+                'ban_start_at' => 'required_if:ban,on',
+                'ban_end_at' => 'required_if:ban,on',
+                'en_name' => 'sometimes|string|max:255',
+            ];
+
+            if (!empty($user->student)) {
+                $rules['user_code'] = 'required|unique:users,user_code,' . $user->id;
+            }
+
+            $validatedData = $request->validate($rules);
+
+            $user->fill($validatedData);
+
+            if (!empty($validatedData['password'])) {
+                $user->password = User::generatePassword($validatedData['password']);
+            }
+
+            $user->save();
+
+            return response()->json([
+                'message' => 'User updated successfully',
+                'user' => $user->fresh()
+            ], 200);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return response()->json([
+                'message' => 'Validation failed',
+                'errors' => $e->errors()
+            ], 422);
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'An error occurred',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function destroy($url_name, $id)
+    {
+        $this->authorize('admin_users_delete');
+
+        $organization = Organization::where('url_name', $url_name)->firstOrFail();
+        if (!$organization) {
+            return response()->json(['message' => 'Organization not found'], 404);
+        }
+        $user = User::find($id);
+
+        if ($user) {
+            $user->delete();
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'User deleted successfully'
+        ], 200);
     }
 }

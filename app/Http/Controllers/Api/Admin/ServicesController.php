@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Http\Controllers\Admin;
+namespace App\Http\Controllers\Api\Admin;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
@@ -24,7 +24,7 @@ use App\Exports\RequestsExport;
 use Maatwebsite\Excel\Facades\Excel;
 use Illuminate\Support\Facades\Validator;
 
-class ServiceController extends Controller
+class ServicesController extends Controller
 {
     /**
      * Display a listing of the resource.
@@ -33,14 +33,15 @@ class ServiceController extends Controller
      */
     public function index()
     {
-        $services = Service::paginate(10);
-        return view('admin.services.index', compact('services'));
+        $services = Service::all();
+        return response()->json([
+            'success' => true,
+            'data' => $services
+        ], 200);
     }
 
     public function requests(Service $service)
     {
-
-        // $services = Service::paginate(1);
         $lastBatch = StudyClass::latest()->first();
         $categories = Category::whereNull('parent_id')
             ->whereHas('bundles', function ($query) use ($lastBatch) {

@@ -4,7 +4,6 @@ namespace App\Http\Controllers\Admin;
 
 use App\Exports\salesExport;
 use App\Http\Controllers\Controller;
-use App\Http\Controllers\Web\PaymentController;
 use App\Models\AccountCharge;
 use App\Models\Accounting;
 use App\Models\Bundle;

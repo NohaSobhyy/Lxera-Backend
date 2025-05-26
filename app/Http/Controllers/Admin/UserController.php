@@ -1460,12 +1460,14 @@ class UserController extends Controller
         $term = $request->get('term');
         $option = $request->get('option');
 
-        $users = User::select('id', 
-        DB::raw('CONCAT(full_name, " - ", user_code) as name'))
+        $users = User::select(
+            'id',
+            DB::raw('CONCAT(full_name, " - ", user_code) as name')
+        )
             //->where('role_name', Role::$user)
             ->where(function ($query) use ($term) {
                 $query->where('full_name', 'like', '%' . $term . '%')
-                   ->orWhere('user_code', 'like', '%' . $term . '%');
+                    ->orWhere('user_code', 'like', '%' . $term . '%');
             });
 
         if ($option === 'for_user_group') {
@@ -1543,22 +1545,6 @@ class UserController extends Controller
         return Excel::download($usersExport, 'instructors.xlsx');
     }
 
-    public function exportExcelStudents(Request $request)
-    {
-        $this->authorize('admin_users_export_excel');
-        // $users = User::where(['role_name' => Role::$registered_user])->whereHas('student')->orderBy('created_at', 'desc')->get();
-        $sales = $this->Users($request, true);
-        if (!empty($request->class_id)) {
-            $studyClass = StudyClass::find($request->class_id);
-            if (!empty($studyClass)) {
-                $sales = (new StudyClassController())->Users($request, $studyClass, true);
-            }
-        }
-
-        $usersExport = new EnrollersExport($sales, $request->class_id ?? null);
-
-        return Excel::download($usersExport, 'نموذج حجز مقعد.xlsx');
-    }
     public function importExcelStudents(Request $request)
     {
         try {
