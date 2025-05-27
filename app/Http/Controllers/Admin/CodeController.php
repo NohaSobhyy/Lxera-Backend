@@ -17,21 +17,21 @@ class CodeController extends Controller
     public function index()
     {
         $this->authorize('admin_codes_list');
-         removeContentLocale();
+        removeContentLocale();
 
         $codes = Code::all();
-        
-        return view('admin.codes.list',['codes' => $codes]);
+
+        return view('admin.codes.list', ['codes' => $codes]);
     }
-    
+
     public function index_instructor()
     {
         $this->authorize('instructor_codes_list');
-         removeContentLocale();
+        removeContentLocale();
 
         $codes = Code::all();
-        
-        return view('admin.codes.list_instructor',['codes' => $codes]);
+
+        return view('admin.codes.list_instructor', ['codes' => $codes]);
     }
 
     /**
@@ -41,14 +41,14 @@ class CodeController extends Controller
      */
     public function create()
     {
-         $this->authorize('admin_codes_create');
+        $this->authorize('admin_codes_create');
 
         return view('admin.codes.create');
     }
-    
-     public function create_instructor()
+
+    public function create_instructor()
     {
-         $this->authorize('instructor_codes_create');
+        $this->authorize('instructor_codes_create');
 
         return view('admin.codes.create_instructor');
     }
@@ -69,14 +69,13 @@ class CodeController extends Controller
         $rules = [
             'student_code' => 'required',
         ];
-        $validate= $request->validate($rules);
+        $validate = $request->validate($rules);
 
 
         if (!$validate) {
-            
+
             return redirect()->back();
-        }
-        else{
+        } else {
             $lastCode = Code::latest()->first();
 
             if ($lastCode) {
@@ -84,20 +83,17 @@ class CodeController extends Controller
                     'student_code' => $data,
                 ]);
             } else {
-        
+
                 $code = Code::create([
                     'student_code' => $data,
                 ]);
             }
-            
-           return redirect()->route('codes');
-        }
 
-            
-      
+            return redirect()->route('codes');
+        }
     }
-    
-    
+
+
     public function store_instructor(Request $request)
     {
         $this->authorize('instructor_codes_create');
@@ -108,14 +104,13 @@ class CodeController extends Controller
         $rules = [
             'instructor_code' => 'required',
         ];
-        $validate= $request->validate($rules);
+        $validate = $request->validate($rules);
 
 
         if (!$validate) {
-            
+
             return redirect()->back();
-        }
-        else{
+        } else {
             $lastCode = Code::latest()->first();
 
             if ($lastCode) {
@@ -123,17 +118,14 @@ class CodeController extends Controller
                     'instructor_code' => $data,
                 ]);
             } else {
-        
+
                 $code = Code::create([
                     'instructor_code' => $data,
                 ]);
             }
-            
-           return redirect()->route('instructor_codes');
-        }
 
-            
-      
+            return redirect()->route('instructor_codes');
+        }
     }
 
     /**

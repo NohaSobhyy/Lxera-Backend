@@ -1,10 +1,13 @@
 <?php
 
+use App\Http\Controllers\Api\Admin\EnrollmentsController;
+use App\Http\Controllers\Api\Admin\CodesController;
 use App\Http\Controllers\Api\Panel\DashboardController;
 use App\Http\Controllers\Api\Panel\RequirementsController;
 use App\Http\Controllers\Api\Panel\SalesController;
 use App\Http\Controllers\Api\Panel\UsersController;
 use App\Http\Controllers\Api\Admin\ServicesController;
+use App\Http\Controllers\Api\Admin\StudyClassesController;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('{url_name}')->group(function () {
@@ -46,17 +49,37 @@ Route::prefix('{url_name}')->group(function () {
         });
 
         // Electronic Services
-        Route::apiResource('services', ServicesController::class);
-
-        Route::prefix('courses')->group(function () {
-            Route::get('/list', 'UserController@coursesList');
-            Route::get('/{id}', 'UserController@Courses');
-            Route::get('/groups/{id}/show', 'UserController@groupInfo');
-            Route::get('/groups/{group}/edit', 'UserController@groupEdit');
-            Route::put('/groups/{group}/update', 'UserController@groupUpdate');
-            Route::post('/groups/{group}/change', 'UserController@changeGroup');
-            Route::get('/groups/{id}/delete', 'GroupController@destroy');
-            Route::get('/groups/{group}/exportExcel', 'UserController@groupExportExcel');
+        Route::prefix('services')->group(function () {
+            Route::get('', [ServicesController::class, 'index']);
+            Route::get('{service}', [ServicesController::class, 'show']);
+            Route::post('', [ServicesController::class, 'store']);
+            Route::put('{service}', [ServicesController::class, 'update']);
+            Route::delete('{service}', [ServicesController::class, 'destroy']);
+            Route::get('{service}/requests', [ServicesController::class, 'requests']);
+            Route::get('/requests/{service}/export', [ServicesController::class, 'exportRequests']);
         });
+
+        // Academic Classes
+        Route::prefix('classes')->group(function () {
+            Route::get('/', [StudyClassesController::class, 'index']);
+            Route::post('/', [StudyClassesController::class, 'store']);
+            Route::put('/{class}', [StudyClassesController::class, 'update']);
+            Route::delete('/{class}', [StudyClassesController::class, 'destroy']);
+            Route::get('/{class}/students', [StudyClassesController::class, 'students']);
+            Route::get('/{class}/excelStudent', [StudyClassesController::class, 'exportExcelBatchStudents']);
+            Route::get('/{class}/registered_users', [StudyClassesController::class, 'RegisteredUsers']);
+            Route::get('/{class}/users', [StudyClassesController::class, 'Users']);
+            Route::get('/{class}/enrollers', [StudyClassesController::class, 'Enrollers']);
+            Route::get('/{class}/direct_register', [StudyClassesController::class, 'directRegister']);
+        });
+
+        // Codes
+        Route::prefix('codes')->group(function () {
+            Route::get('/', [CodesController::class, 'index']);
+            Route::post('/', [CodesController::class, 'store']);
+            Route::get('/instructor', [CodesController::class, 'index_instructor']);
+            Route::post('/instructor_store', [CodesController::class, 'store_instructor']);
+        });
+
     });
 });

@@ -21,6 +21,8 @@ use App\Models\Role;
 use App\Models\StudyClass;
 use App\User;
 use App\Exports\RequestsExport;
+use App\Models\Api\Organization;
+
 use Maatwebsite\Excel\Facades\Excel;
 use Illuminate\Support\Facades\Validator;
 
@@ -40,41 +42,32 @@ class ServicesController extends Controller
         ], 200);
     }
 
-    public function requests(Service $service)
+    public function requests($url_name, Service $service)
     {
-        $lastBatch = StudyClass::latest()->first();
-        $categories = Category::whereNull('parent_id')
-            ->whereHas('bundles', function ($query) use ($lastBatch) {
-                $query->where('batch_id', $lastBatch->id);
-            })
-            ->orWhereHas('subCategories', function ($query) use ($lastBatch) {
-                $query->whereHas('bundles', function ($query) use ($lastBatch) {
-                    $query->where('batch_id', $lastBatch->id);
-                });
-            })
-            ->with(
-                [
-                    'bundles' => function ($query) use ($lastBatch) {
-                        $query->where('batch_id', $lastBatch->id);
-                    },
+        $organization = Organization::where('url_name', $url_name)->first();
 
-                    'subCategories' => function ($query) use ($lastBatch) {
-                        $query->whereHas('bundles', function ($query) use ($lastBatch) {
-                            $query->where('batch_id', $lastBatch->id);
-                        })->with([
-                            'bundles' => function ($query) use ($lastBatch) {
-                                $query->where('batch_id', $lastBatch->id);
-                            },
-                        ]);
-                    },
-                ]
-            )->get();
+        if (!$organization) {
+            return response()->json(['message' => 'This Organization not found'], 404);
+        }
 
-        return view('admin.services.requests', compact('service', 'categories'));
+        $serviceUsers = ServiceUser::where('service_id', $service->id)
+            ->with('user')
+            ->get();
+
+        return response()->json([
+            'service_users' => $serviceUsers
+        ]);
     }
 
-    public function exportRequests(Service $service)
+
+    public function exportRequests($url_name, Service $service)
     {
+        $organization = Organization::where('url_name', $url_name)->first();
+
+        if (!$organization) {
+            return response()->json(['message' => 'This Organization not found'], 404);
+        }
+
         $users = $service->users()->get();
         $export = new RequestsExport($users);
 
@@ -206,25 +199,6 @@ class ServicesController extends Controller
         }
     }
 
-    /**
-     * Show the form for creating a new resource.
-     *
-     * @return \Illuminate\Http\Response
-     */
-    public function create()
-    {
-        //
-
-        $courses = Webinar::get();
-        $bundles = Bundle::get();
-        $data = [
-
-            'bundles' => $bundles,
-            'courses' => $courses,
-        ];
-
-        return view('admin.services.create', $data);
-    }
 
     /**
      * Store a newly created resource in storage.
@@ -232,17 +206,19 @@ class ServicesController extends Controller
      * @param  \Illuminate\Http\Request  $request
      * @return \Illuminate\Http\Response
      */
-    public function store(Request $request)
+    public function store($url_name, Request $request)
     {
-        //
+                $organization = Organization::where('url_name', $url_name)->first();
+
+        if (!$organization) {
+            return response()->json(['message' => 'This Organization not found'], 404);
+        }
         $authUser = Auth::user();
 
         $request->validate([
             'title' => 'required|string|min:3',
             'description' => 'nullable|string|min:10',
             'price' => 'required|regex:/^\d{1,4}(\.\d{1,6})?$/',
-            // 'apply_link' => 'required|url',
-            // 'review_link' => 'required|url',
             'start_date' => 'required|date',
             'end_date' => 'required|date',
             'status' => ['required', Rule::in(['pending', 'active', 'inactive'])],
@@ -254,31 +230,31 @@ class ServicesController extends Controller
         $request['created_by'] = $authUser->id;
         $data = $request->all();
         $data['status'] = 'inactive';
-        $data['target'] = $request->target;
-        $lastService = (Service::get()->last()->id) + 1;
-        $data['apply_link'] = env('APP_URL') . 'panel/services/' . $lastService . '/apply';
-        $data['review_link'] = env('APP_URL') . 'panel/services/' . $lastService . '/review';
+
+        $lastId = Service::max('id') + 1;
+        $data['apply_link'] = env('APP_URL') . "panel/services/{$lastId}/apply";
+        $data['review_link'] = env('APP_URL') . "panel/services/{$lastId}/review";
+
         $service = Service::create($data);
 
-
-        if ($request->has('bundles')) {
-            foreach ($request->bundles as $bundleId) {
-                ServiceItem::create([
-                    'bundle_id' => $bundleId,
-                    'service_id' => $service->id,
-                ]);
-            }
+        foreach ($request->bundles ?? [] as $bundleId) {
+            ServiceItem::create([
+                'bundle_id' => $bundleId,
+                'service_id' => $service->id,
+            ]);
         }
 
-        if ($request->has('courses')) {
-            foreach ($request->courses as $webinarId) {
-                ServiceItem::create([
-                    'webinar_id' => $webinarId,
-                    'service_id' => $service->id,
-                ]);
-            }
+        foreach ($request->courses ?? [] as $webinarId) {
+            ServiceItem::create([
+                'webinar_id' => $webinarId,
+                'service_id' => $service->id,
+            ]);
         }
-        return redirect("/admin/services/$service->id/edit")->with('success', 'تم إنشاء الخدمة بنجاح');
+
+        return response()->json([
+            'message' => 'Service created successfully.',
+            'service' => $service
+        ], 201);
     }
 
     /**
@@ -287,30 +263,20 @@ class ServicesController extends Controller
      * @param  int  $id
      * @return \Illuminate\Http\Response
      */
-    public function show(Service $service)
+    public function show($url_name, Service $service)
     {
-        //
+        $organization = Organization::where('url_name', $url_name)->first();
 
-        $courses = Webinar::get();
-        $bundles = Bundle::get();
+        if (!$organization) {
+            return response()->json(['message' => 'This Organization not found'], 404);
+        }
+        // $service->load(['bundles', 'webinars']);
 
-        return view('admin.services.show',  compact('service', 'courses', 'bundles'));
-    }
-
-    /**
-     * Show the form for editing the specified resource.
-     *
-
-     * @return \Illuminate\Http\Response
-     */
-    public function edit(Service $service)
-    {
-        //
-        $courses = Webinar::get();
-        $bundles = Bundle::get();
-
-
-        return view('admin.services.create', compact('service', 'courses', 'bundles'));
+        return response()->json([
+            'service' => $service,
+            // 'courses' => Webinar::all(),
+            // 'bundles' => Bundle::all(),
+        ]);
     }
 
     /**
@@ -320,36 +286,41 @@ class ServicesController extends Controller
      * @param  int  $id
      * @return \Illuminate\Http\Response
      */
-    public function update(Request $request, Service $service)
+
+    public function update($url_name, Request $request, Service $service)
     {
-        //
+        $organization = Organization::where('url_name', $url_name)->first();
+
+        if (!$organization) {
+            return response()->json(['message' => 'This Organization not found'], 404);
+        }
         $authUser = Auth::user();
+
         $request->validate([
-            'title' => 'required|string|min:3',
+            'title' => 'sometimes|string|min:3',
             'description' => 'nullable|string|min:10',
-            'price' => 'required|regex:/^\d{1,4}(\.\d{1,6})?$/',
-            'apply_link' => 'required|url',
-            'review_link' => 'required|url',
-            'start_date' => 'required|date',
-            'end_date' => 'required|date',
-            'status' => ['required', Rule::in(['pending', 'active', 'inactive'])],
-            'target' => 'required|string|in:all,bundles,specific_bundles,webinars,specific_webinars',
+            'price' => 'sometimes|regex:/^\d{1,4}(\.\d{1,6})?$/',
+            'apply_link' => 'sometimes|url',
+            'review_link' => 'sometimes|url',
+            'start_date' => 'sometimes|date',
+            'end_date' => 'sometimes|date',
+            'status' => ['sometimes', Rule::in(['pending', 'active', 'inactive'])],
+            'target' => 'sometimes|string|in:all,bundles,specific_bundles,webinars,specific_webinars',
             'bundles' => 'nullable|array|required_if:target,specific_bundles',
             'courses' => 'nullable|array|required_if:target,specific_webinars',
-
         ]);
 
-        //dd($request);
-
         $request['created_by'] = $authUser->id;
+        $service->update($request->all());
 
-        $data = $request->all();
-        $service->update($data);
-
+        // Sync relationships
         $service->bundles()->sync($request->input('bundles', []));
         $service->webinars()->sync($request->input('courses', []));
 
-        return back()->with('success', 'تم تعديل الخدمة بنجاح');
+        return response()->json([
+            'message' => 'Service updated successfully.',
+            'service' => $service
+        ]);
     }
 
     /**
@@ -358,11 +329,18 @@ class ServicesController extends Controller
      * @param  int  $id
      * @return \Illuminate\Http\Response
      */
-    public function destroy(Service $service)
+    public function destroy($url_name, Service $service)
     {
-        //
+        $organization = Organization::where('url_name', $url_name)->first();
+
+        if (!$organization) {
+            return response()->json(['message' => 'This Organization not found'], 404);
+        }
         $service->delete();
-        return redirect('admin/services')->with('success', 'تم حذف الخدمة بنجاح');
+
+        return response()->json([
+            'message' => 'Service deleted successfully.'
+        ]);
     }
 
 
