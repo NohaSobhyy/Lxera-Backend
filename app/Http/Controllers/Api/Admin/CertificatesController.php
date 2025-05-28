@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Http\Controllers\Admin;
+namespace App\Http\Controllers\Api\Admin;
 
 use App\BundleStudent;
 use App\Exports\CertificatesExport;
@@ -12,16 +12,17 @@ use App\Models\Translation\CertificateTemplateTranslation;
 use App\User;
 use App\Models\Bundle;
 use App\Models\Webinar;
-use App\Models\Sale;
+use Illuminate\Support\Facades\Validator;
 use App\Models\Quiz;
 use App\Models\CertificateTemplate;
 use Intervention\Image\Facades\Image;
 use Illuminate\Http\Request;
 use Maatwebsite\Excel\Facades\Excel;
 use App\Http\Controllers\Panel\CertificateController as PanelCertificateController;
+use App\Models\Api\Organization;
+use Illuminate\Support\Carbon;
 
-
-class CertificateController extends Controller
+class CertificatesController extends Controller
 {
     public function index(Request $request)
     {
@@ -40,15 +41,11 @@ class CertificateController extends Controller
                 'quizzesResult'
             ]
         )->orderBy('created_at', 'desc')
-            ->paginate(10);
+            ->get();
 
 
         $data = [
-            'pageTitle' => trans('admin/main.certificate_list_page_title'),
             'certificates' => $certificates,
-            'student' => $filters['student'] ?? null,
-            'instructor' => $filters['instructor'] ?? null,
-            'quiz_title' => $filters['quiz_title'] ?? null,
         ];
 
         $teacher_ids = $request->get('teacher_ids');
@@ -64,15 +61,10 @@ class CertificateController extends Controller
                 ->whereIn('id', $student_ids)->get();
         }
 
-        return view('admin.certificates.lists', $data);
-    }
-
-    public function purchase()
-    {
-        $purchased_certificates = Sale::whereNotNull('certificate_template_id')
-            ->get();
-
-        return view('admin.certificates.purchased_certificates', compact('purchased_certificates'));
+        return response()->json([
+            'success' => true,
+            'message' => $data
+        ]);
     }
 
     private function filters($query, $request)
@@ -106,14 +98,12 @@ class CertificateController extends Controller
         removeContentLocale();
 
         $templates = CertificateTemplate::orderBy('created_at', 'desc')
-            ->paginate(10);
+            ->get();
 
-        $data = [
-            'pageTitle' => trans('admin/main.certificate_templates_list_page_title'),
-            'templates' => $templates,
-        ];
-
-        return view('admin.certificates.templates', $data);
+        return response()->json([
+            'success' => true,
+            'data' => $templates
+        ]);
     }
 
     public function CertificatesNewTemplate()
@@ -134,165 +124,123 @@ class CertificateController extends Controller
         return view('admin.certificates.new_templates', $data);
     }
 
-    public function CertificatesTemplateStore(Request $request, $template_id = null)
+    public function CertificatesTemplateStore($url_name, Request $request, $template_id = null)
     {
+        $organization = Organization::where('url_name', $url_name)->first();
+
+        if (!$organization) {
+            return response()->json(['message' => 'This organization was not found.'], 404);
+        }
 
         $rules = [
-            'title' => 'required',
-            'image' => 'required',
+            'title' => 'required|string',
+            'image' => 'required|string',
             'type' => 'required|in:quiz,course,bundle,attendance,new_verssion_bundle,new_verssion_course,new_verssion_attendance',
-            // 'bundles'=>'required',
-            //    'student_name'=>'required',
-            'position_x_student' => 'required',
-            'position_y_student' => 'required',
-            'font_size_student' => 'required',
-            // 'text'=>'required',
-            // 'position_x_text' => 'required',
-            // 'position_y_text' => 'required',
-            // 'font_size_text' => 'required',
-            // 'course_name'=>'required',
-            'position_x_course' => 'required',
-            'position_y_course' => 'required',
-            'font_size_course' => 'required',
-            // 'graduation_date' => 'required|date',
-            'position_x_date' => 'required',
-            'position_y_date' => 'required',
-            'font_size_date' => 'required',
-            //'gpa' => 'required',
-            'position_x_gpa' => 'required',
-            'position_y_gpa' => 'required',
-            'font_size_gpa' => 'required',
 
-            'position_x_certificate_code' => 'required',
-            'position_y_certificate_code' => 'required',
-            'font_size_certificate_code' => 'required',
-            'text_color' => 'required',
+            'position_x_student' => 'required|numeric',
+            'position_y_student' => 'required|numeric',
+            'font_size_student' => 'required|numeric',
+
+            'position_x_course' => 'required|numeric',
+            'position_y_course' => 'required|numeric',
+            'font_size_course' => 'required|numeric',
+
+            'position_x_date' => 'required|numeric',
+            'position_y_date' => 'required|numeric',
+            'font_size_date' => 'required|numeric',
+
+            'position_x_gpa' => 'required|numeric',
+            'position_y_gpa' => 'required|numeric',
+            'font_size_gpa' => 'required|numeric',
+
+            'position_x_certificate_code' => 'required|numeric',
+            'position_y_certificate_code' => 'required|numeric',
+            'font_size_certificate_code' => 'required|numeric',
+
+            'text_color' => 'required|string',
+            'locale' => 'required|string',
         ];
 
-        $this->validate($request, $rules);
+        $validator = Validator::make($request->all(), $rules);
+
+        if ($validator->fails()) {
+            return response()->json(['errors' => $validator->errors()], 422);
+        }
 
         try {
             $this->authorize('admin_certificate_template_create');
+
             $data = $request->all();
 
+            $templateData = [
+                'image' => $data['image'],
+                'status' => $data['status'] ?? 'draft',
+                'type' => $data['type'],
+                'price' => $data['price'] ?? null,
+                'student_name' => $data['student_name'] ?? null,
+                'position_x_student' => $data['position_x_student'],
+                'position_y_student' => $data['position_y_student'],
+                'font_size_student' => $data['font_size_student'],
 
-            // if ($data['status'] and $data['status'] == 'publish') { // set draft for other templates
-            //     CertificateTemplate::where('status', 'publish')
-            //         ->where('type', $data['type'])
-            //         ->update([
-            //             'status' => 'draft'
-            //         ]);
-            // }
+                'text' => $data['text'] ?? null,
+                'position_x_text' => $data['position_x_text'] ?? null,
+                'position_y_text' => $data['position_y_text'] ?? null,
+                'font_size_text' => $data['font_size_text'] ?? null,
 
+                'course_name' => $data['course_name'] ?? null,
+                'position_x_course' => $data['position_x_course'],
+                'position_y_course' => $data['position_y_course'],
+                'font_size_course' => $data['font_size_course'],
+
+                'graduation_date' => $data['graduation_date'] ?? null,
+                'position_x_date' => $data['position_x_date'],
+                'position_y_date' => $data['position_y_date'],
+                'font_size_date' => $data['font_size_date'],
+
+                'gpa' => $data['gpa'] ?? null,
+                'position_x_gpa' => $data['position_x_gpa'],
+                'position_y_gpa' => $data['position_y_gpa'],
+                'font_size_gpa' => $data['font_size_gpa'],
+
+                'text_color' => $data['text_color'],
+                'position_x_certificate_code' => $data['position_x_certificate_code'],
+                'position_y_certificate_code' => $data['position_y_certificate_code'],
+                'font_size_certificate_code' => $data['font_size_certificate_code'],
+            ];
 
             if (!empty($template_id)) {
-
                 $template = CertificateTemplate::findOrFail($template_id);
-
-                $template->update([
-                    'image' => $data['image'],
-                    'status' => $data['status'],
-                    'type' => $data['type'],
-                    'price' => $data['price'],
-                    'student_name' => $data['student_name'],
-                    'position_x_student' => $data['position_x_student'],
-                    'position_y_student' => $data['position_y_student'],
-                    'font_size_student' => $data['font_size_student'],
-                    'text' => $data['text'],
-                    'position_x_text' => $data['position_x_text'],
-                    'position_y_text' => $data['position_y_text'],
-                    'font_size_text' => $data['font_size_text'],
-                    'course_name' => $data['course_name'],
-                    'position_x_course' => $data['position_x_course'],
-                    'position_y_course' => $data['position_y_course'],
-                    'font_size_course' => $data['font_size_course'],
-                    'graduation_date' => $data['graduation_date'],
-                    'position_x_date' => $data['position_x_date'],
-                    'position_y_date' => $data['position_y_date'],
-                    'font_size_date' => $data['font_size_date'],
-
-                    'gpa' => $data['gpa'],
-                    'position_x_gpa' => $data['position_x_gpa'],
-                    'position_y_gpa' => $data['position_y_gpa'],
-                    'font_size_gpa' => $data['font_size_gpa'],
-
-                    'position_x_certificate_code' => $data['position_x_certificate_code'],
-                    'position_y_certificate_code' => $data['position_y_certificate_code'],
-                    'font_size_certificate_code' => $data['font_size_certificate_code'],
-                    'text_color' => $data['text_color'],
-
-                    'updated_at' => time(), // Use Carbon's now() instead of time()
-                ]);
-                // if (!empty($request->input('bundles'))) {
-                //     $template->bundle()->sync($request->input('bundles', []));
-                // }
-
-                $template->bundle()->sync($request->input('bundles', []));
-                $template->webinar()->sync($request->input('webinars', []));
-                //if(!empty($request->input('webinars'))){
-                //     $template->webinar()->sync($request->input('webinars', []));
-                // }
-
+                $template->update($templateData);
             } else {
-                $template = CertificateTemplate::create([
-                    'image' => $data['image'],
-                    'status' => $data['status'],
-                    'type' => $data['type'],
-                    'price' => $data['price'],
-                    'student_name' => $data['student_name'],
-                    'position_x_student' => $data['position_x_student'],
-                    'position_y_student' => $data['position_y_student'],
-                    'font_size_student' => $data['font_size_student'],
-                    'text' => $data['text'],
-                    'position_x_text' => $data['position_x_text'],
-                    'position_y_text' => $data['position_y_text'],
-                    'font_size_text' => $data['font_size_text'],
-                    'course_name' => $data['course_name'],
-                    'position_x_course' => $data['position_x_course'],
-                    'position_y_course' => $data['position_y_course'],
-                    'font_size_course' => $data['font_size_course'],
-                    'graduation_date' => $data['graduation_date'],
-                    'position_x_date' => $data['position_x_date'],
-                    'position_y_date' => $data['position_y_date'],
-                    'font_size_date' => $data['font_size_date'],
-                    'gpa' => $data['gpa'],
-                    'position_x_gpa' => $data['position_x_gpa'],
-                    'position_y_gpa' => $data['position_y_gpa'],
-                    'font_size_gpa' => $data['font_size_gpa'],
-
-                    'text_color' => $data['text_color'],
-                    'position_x_certificate_code' => $data['position_x_certificate_code'],
-                    'position_y_certificate_code' => $data['position_y_certificate_code'],
-                    'font_size_certificate_code' => $data['font_size_certificate_code'],
-                    'created_at' => time(), // Use Carbon's now() instead of time()
-                ]);
-
-                if (!empty($request->input('bundles'))) {
-                    $template->bundle()->sync($request->input('bundles', []));
-                }
-
-                if (!empty($request->input('webinars'))) {
-                    $template->webinar()->sync($request->input('webinars', []));
-                }
+                $templateData['created_at'] = time();
+                $templateData['updated_at'] = time();
+                $template = CertificateTemplate::create($templateData);
             }
 
+            $template->bundle()->sync($request->input('bundles', []));
+            $template->webinar()->sync($request->input('webinars', []));
 
-            CertificateTemplateTranslation::updateOrCreate([
-                'certificate_template_id' => $template->id,
-                'locale' => mb_strtolower($data['locale']),
-            ], [
-                'title' => $data['title'],
-                //  'body' => $data['body'],
-                'rtl' => $data['rtl'],
-            ]);
+            CertificateTemplateTranslation::updateOrCreate(
+                ['certificate_template_id' => $template->id, 'locale' => strtolower($data['locale'])],
+                ['title' => $data['title'], 'rtl' => $data['rtl'] ?? 0]
+            );
 
             removeContentLocale();
 
-            return redirect(getAdminPanelUrl() . '/certificates/templates');
+            return response()->json([
+                'success' => true,
+                'message' => 'Certificate template saved successfully',
+                'data' => $template
+            ], 200);
         } catch (\Exception $e) {
-            dd($e);
+            return response()->json([
+                'success' => false,
+                'message' => 'Error occurred',
+                'error' => $e->getMessage()
+            ], 500);
         }
     }
+
 
 
     public function CertificatesTemplatePreview(Request $request)
@@ -426,67 +374,86 @@ class CertificateController extends Controller
         return $img->response('jpg');
     }
 
-
-
-    public function CertificatesTemplatesEdit(Request $request, $template_id)
-    {
-        $this->authorize('admin_certificate_template_edit');
-
-        $template = CertificateTemplate::findOrFail($template_id);
-
-        $locale = $request->get('locale', app()->getLocale());
-        storeContentLocale($locale, $template->getTable(), $template->id);
-        $bundles = Bundle::get();
-        $courses = Webinar::get();
-        $data = [
-            'pageTitle' => trans('admin/main.certificate_template_edit_page_title'),
-            'template' => $template,
-            'bundles' => $bundles,
-            'courses' => $courses,
-        ];
-        return view('admin.certificates.new_templates', $data);
-    }
-
-    public function CertificatesTemplatesDelete($template_id)
+    public function CertificatesTemplatesDelete($url_name, $template_id)
     {
         $this->authorize('admin_certificate_template_delete');
+
+        $organization = Organization::where('url_name', $url_name)->first();
+
+        if (!$organization) {
+            return response()->json(['message' => 'This organization was not found.'], 404);
+        }
 
         $template = CertificateTemplate::findOrFail($template_id);
 
         $template->delete();
 
-        return redirect(getAdminPanelUrl() . '/certificates/templates');
+        return response()->json([
+            'success' => true,
+            'message' => 'Certificate template Deleted Successfully'
+        ]);
     }
 
-    public function CertificatesDownload($id)
+    public function CertificatesDownload($url_name, $id)
     {
+        $organization = Organization::where('url_name', $url_name)->first();
+
+        if (!$organization) {
+            return response()->json(['message' => 'This organization was not found.'], 404);
+        }
         $certificate = Certificate::findOrFail($id);
+
+        $templatePath = public_path('certificates\template.jpg');
+
+        if (!file_exists($templatePath)) {
+            return response()->json(['error' => 'Certificate template not found.'], 404);
+        }
+
+        $image = Image::make($templatePath);
+
+
+        $certificate = Certificate::findOrFail($id);
+        if (!$certificate) {
+            return response()->json(['message' => 'Certificate not found.'], 404);
+        }
 
         $makeCertificate = new MakeCertificate();
 
-        if ($certificate->type == 'quiz') {
-            $quizResult = QuizzesResult::where('id', $certificate->quiz_result_id)
-                ->where('status', QuizzesResult::$passed)
-                ->with([
-                    'quiz' => function ($query) {
-                        $query->with(['webinar']);
-                    },
-                    'user'
-                ])
-                ->first();
+        switch ($certificate->type) {
+            case 'quiz':
+                $quizResult = QuizzesResult::where('id', $certificate->quiz_result_id)
+                    ->where('status', QuizzesResult::$passed)
+                    ->with([
+                        'quiz' => function ($query) {
+                            $query->with('webinar');
+                        },
+                        'user'
+                    ])->first();
 
-            return $makeCertificate->makeQuizCertificate($quizResult);
-        } else if ($certificate->type == 'course') {
+                if (!$quizResult) {
+                    return response()->json(['message' => 'Quiz result not found or not passed.'], 404);
+                }
 
-            return $this->makeCourseCertificate($certificate);
-        } else if ($certificate->type == 'bundle') {
+                $certificateData = $makeCertificate->makeQuizCertificate($quizResult);
+                break;
 
-            return $this->makeBundleCertificate($certificate);
+            case 'course':
+                $certificateData = $this->makeCourseCertificate($certificate);
+                break;
+
+            case 'bundle':
+                $certificateData = $this->makeBundleCertificate($certificate);
+                break;
+
+            default:
+                return response()->json(['message' => 'Invalid certificate type.'], 400);
         }
 
-        abort(404);
+        return response()->json([
+            'message' => 'Certificate generated successfully.',
+            'data' => $certificateData
+        ]);
     }
-    // CertificateController.php
 
     public function deleteSelected(Request $request)
     {
@@ -543,7 +510,6 @@ class CertificateController extends Controller
     }
 
 
-
     public function makeCourseCertificate(Certificate $certificate, $format = 'png')
     {
         $user = $certificate->student;
@@ -589,7 +555,6 @@ class CertificateController extends Controller
             //     return response()->file($path);
             // }
             if ($format === 'pdf') {
-
                 // Convert the image to a base64 string
                 $imageData = (string) $img->encode('data-url'); // Assuming $img is an instance of Intervention Image
 

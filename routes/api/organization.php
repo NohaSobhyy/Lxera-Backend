@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Api\Admin\CategoryController;
 use App\Http\Controllers\Api\Admin\EnrollmentsController;
 use App\Http\Controllers\Api\Admin\CodesController;
 use App\Http\Controllers\Api\Panel\DashboardController;
@@ -8,6 +9,8 @@ use App\Http\Controllers\Api\Panel\SalesController;
 use App\Http\Controllers\Api\Panel\UsersController;
 use App\Http\Controllers\Api\Admin\ServicesController;
 use App\Http\Controllers\Api\Admin\StudyClassesController;
+use App\Http\Controllers\Api\Admin\CertificatesController;
+use App\Http\Controllers\Api\Admin\WebinarCertificateController;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('{url_name}')->group(function () {
@@ -81,5 +84,34 @@ Route::prefix('{url_name}')->group(function () {
             Route::post('/instructor_store', [CodesController::class, 'store_instructor']);
         });
 
+        // Certificates
+        Route::prefix('certificates')->group(function () {
+            Route::get('/', [CertificatesController::class, 'index']);
+            Route::get('/excel', [CertificatesController::class, 'exportExcel']);
+            Route::get('/course-competition', [WebinarCertificateController::class, 'index']);
+            Route::prefix('templates')->group(function () {
+                Route::get('/', [CertificatesController::class, 'CertificatesTemplatesList']);
+                Route::post('/', [CertificatesController::class, 'CertificatesTemplateStore']);
+                Route::put('/{template_id}', [CertificatesController::class, 'CertificatesTemplateStore']);
+                Route::delete('/{template_id}', [CertificatesController::class, 'CertificatesTemplatesDelete']);
+            });
+        });
+
+        // Registrations (enrollments)
+        Route::prefix('enrollments')->group(function () {
+            Route::get('/history', [EnrollmentsController::class, 'history']);
+            Route::get('/{sale_id}/block-access', [EnrollmentsController::class, 'blockAccess']);
+            Route::get('/{sale_id}/enable-access', [EnrollmentsController::class, 'enableAccess']);
+            Route::get('/export', [EnrollmentsController::class, 'exportExcel']);
+            Route::post('/store', [EnrollmentsController::class, 'store']);
+        });
+
+        // Categories
+        Route::prefix('categories')->group(function () {
+            Route::get('/', [CategoryController::class, 'index']);
+            Route::post('/', [CategoryController::class, 'store']);
+            Route::put('/{id}/update', [CategoryController::class, 'update']);
+            Route::delete('/{id}/delete', [CategoryController::class, 'destroy']);
+        });
     });
 });

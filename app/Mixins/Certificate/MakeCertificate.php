@@ -202,7 +202,7 @@ class MakeCertificate
         ];
 
         $honorLevels2 = [
-           ['from' => 5.0, 'to' => 5.0, 'level' => "above excellent first class honors"],
+            ['from' => 5.0, 'to' => 5.0, 'level' => "above excellent first class honors"],
             ['from' => 4.85, 'to' => 4.99, 'level' => "above excellent second class honors"],
             ['from' => 4.75, 'to' => 4.84, 'level' => "excellent"],
             ['from' => 4.5, 'to' => 4.74, 'level' => "above very good"],
@@ -261,18 +261,18 @@ class MakeCertificate
         }
 
         if ($certificateTemplate->type == 'new_verssion_bundle' || $certificateTemplate->type == 'new_verssion_course' || $certificateTemplate->type == 'new_verssion_attendance') {
-               $body['position_x_student'] = 620;
-               $body['position_x_course'] = 620;
-               $body['position_x_text']=620;
-               $body['position_x_gpa']=620;
-               $align='left';
+            $body['position_x_student'] = 620;
+            $body['position_x_course'] = 620;
+            $body['position_x_text'] = 620;
+            $body['position_x_gpa'] = 620;
+            $align = 'left';
         } else {
-             $align='center';
+            $align = 'center';
         }
         // Add Student Name
         if (isset($body['student_name'])) {
 
-            $img->text($body['student_name'],  $body['position_x_student'], $body['position_y_student'], function ($font) use ($fontPath, $certificateTemplate, $body,$align) {
+            $img->text($body['student_name'],  $body['position_x_student'], $body['position_y_student'], function ($font) use ($fontPath, $certificateTemplate, $body, $align) {
                 $font->file($fontPath);
                 $font->size($body['font_size_student']);
                 $font->color($certificateTemplate->text_color);
@@ -284,7 +284,7 @@ class MakeCertificate
 
         // Add Course Name
         if (isset($body['course_name'])) {
-            $img->text($body['course_name'], $body['position_x_course'], $body['position_y_course'], function ($font) use ($fontPath, $certificateTemplate, $body,$align) {
+            $img->text($body['course_name'], $body['position_x_course'], $body['position_y_course'], function ($font) use ($fontPath, $certificateTemplate, $body, $align) {
                 $font->file($fontPath);
                 $font->size($body['font_size_course']);
                 $font->color($certificateTemplate->text_color);
@@ -299,7 +299,7 @@ class MakeCertificate
             if ($body['gpa'] === null || $body['gpa'] == 0) {
 
                 if (isset($body['gpa_text'])) {
-                    $img->text($body['gpa_text'], $body['position_x_gpa'], $body['position_y_gpa'], function ($font) use ($fontPath, $certificateTemplate, $body,$align) {
+                    $img->text($body['gpa_text'], $body['position_x_gpa'], $body['position_y_gpa'], function ($font) use ($fontPath, $certificateTemplate, $body, $align) {
                         $font->file($fontPath);
                         $font->size($body['font_size_gpa']);
                         $font->color($certificateTemplate->text_color);
@@ -307,7 +307,6 @@ class MakeCertificate
                         $font->valign('top');
                     });
                 }
-               
             } elseif ($body['gpa'] != 0.0 && !empty($body['gpa'])) {
                 if ($certificateTemplate->type == 'new_verssion_bundle') {
                     // Determine honor level based on GPA
@@ -331,11 +330,11 @@ class MakeCertificate
                 }
             }
         }
-       
+
 
         // Add GPA Text
         if (!empty($gpaMessage)) {
-            $img->text($gpaMessage, $body['position_x_gpa'], $body['position_y_gpa'], function ($font) use ($fontPath, $certificateTemplate, $body,$align) {
+            $img->text($gpaMessage, $body['position_x_gpa'], $body['position_y_gpa'], function ($font) use ($fontPath, $certificateTemplate, $body, $align) {
                 $font->file($fontPath);
                 $font->size($body['font_size_gpa']);
                 $font->color($certificateTemplate->text_color);
@@ -346,7 +345,7 @@ class MakeCertificate
 
         // Add Additional Text
         if (isset($body['text'])) {
-            $img->text($body['text'], $body['position_x_text'], $body['position_y_text'], function ($font) use ($fontPath, $certificateTemplate, $body,$align) {
+            $img->text($body['text'], $body['position_x_text'], $body['position_y_text'], function ($font) use ($fontPath, $certificateTemplate, $body, $align) {
                 $font->file($fontPath);
                 $font->size($body['font_size_text']);
                 $font->color($certificateTemplate->text_color);
@@ -379,67 +378,66 @@ class MakeCertificate
             ->where('status', 'publish')
             ->latest()
             ->first();
-    
+
         if (!empty($template) && !empty($course)) {
             $user = auth()->user();
             $userCertificate = $this->saveCourseCertificate($user, $course, $template);
             $group = $course->groups()->whereHas('enrollments', function ($query) use ($user) {
                 $query->where('user_id', $user->id);
             })->first();
-    
+
             $body = $this->makeBody($template);
             $body['certificate_code'] = $userCertificate->certificate_code;
             $body['graduation_date'] = $group->end_date ?? $userCertificate->created_at;
             $body['student_name'] = $user->student->en_name ?? '';
             $body['course_name'] = $course->course_name_certificate;
             $body['course_hours'] = $course->duration;
-    
+
             // Generate the image
             $img = $this->makeImage($template, $body);
-    
+
             // Set the path in the public directory under 'certificates' folder
             $certificateFolder = public_path('certificates'); // Path to public/certificates
             if (!is_dir($certificateFolder)) {
                 mkdir($certificateFolder, 0777, true); // Create the folder if it doesn't exist
             }
-    
+
             // Define the certificate filename
             $certificateName = 'certificate_' . $user->id . '_' . $course->id . '.' . $format;
             $path = $certificateFolder . '/' . $certificateName; // Full path to store the certificate file
             // if (file_exists($path)) {
             //     return response()->file($path);
             // }
-        
+
             if ($format === 'pdf') {
                 // Generate PDF with the certificate content
                 $imageData = (string) $img->encode('data-url'); // Assuming $img is an instance of Intervention Image
-    
+
                 $pdf = PDF::loadView('web.default.certificate_template.index', [
                     'pageTitle' => trans('public.certificate'),
                     'body' => $body,
                     'dynamicImage' => $imageData,
                 ]);
-    
+
                 // Save the generated PDF in the public/certificates folder
                 $pdf->save($path);
-    
+
                 // Optionally return the PDF to the browser
                 return $pdf->setPaper('a4')
                     ->setWarnings(false)
                     ->stream('course_certificate.pdf');
             } else {
                 // Save the generated image in the public/certificates folder
-             
+
                 $img->save($path); // Save the image to the specified path
-  
+
                 // Optionally return the image to the browser
                 return $img->response('png');
             }
         }
-    
+
         abort(404);
     }
-    
 
     public function saveCourseCertificate($user, $course, $template)
     {
@@ -489,7 +487,7 @@ class MakeCertificate
             ->where('status', 'publish')
             ->latest()
             ->first();
-          
+
         $templateAttendance = $bundle->certificate_template()
             ->where('status', 'publish')
             ->where(function ($query) {
@@ -498,19 +496,19 @@ class MakeCertificate
             })
             ->latest()
             ->first();
-    
+
         if (!empty($template) && !empty($bundle)) {
             $user = auth()->user();
             $userCertificate = $this->saveBundleCertificate($user, $bundle, $template);
-    
+
             if ($allAssignmentsPassed && $gpa !== null) {
                 $data = $template;
                 $body = $this->makeBody($data);
                 $body['certificate_code'] = $userCertificate->certificate_code;
                 $body['student_name'] = $user->student->en_name ?? '';
                 $body['course_name'] = $bundle->bundle_name_certificate;
-                $body['graduation_date'] = $userCertificate->graduation_date ?? $bundle->end_date; 
-    
+                $body['graduation_date'] = $userCertificate->graduation_date ?? $bundle->end_date;
+
                 $body['gpa'] = $gpa;
                 $img = $this->makeImage($template, $body);
             } else {
@@ -523,13 +521,13 @@ class MakeCertificate
                 $body['gpa'] = $gpa;
                 $img = $this->makeImage($templateAttendance, $body);
             }
-    
+
             // Set the path in the public directory under 'certificates' folder
             $certificateFolder = public_path('certificates'); // Path to public/certificates
             if (!is_dir($certificateFolder)) {
                 mkdir($certificateFolder, 0777, true); // Create the folder if it doesn't exist
             }
-    
+
             // Define the certificate filename
             $certificateName = 'certificate_bundle_' . $user->id . '_' . $bundle->id . '.' . $format;
             $path = $certificateFolder . '/' . $certificateName; // Full path to store the certificate file
@@ -544,10 +542,10 @@ class MakeCertificate
                     'body' => $body,
                     'dynamicImage' => $imageData,
                 ]);
-    
+
                 // Save the generated PDF in the public/certificates folder
                 $pdf->save($path);
-    
+
                 // Optionally return the PDF to the browser
                 return $pdf->setPaper('a4')
                     ->setWarnings(false)
@@ -555,15 +553,15 @@ class MakeCertificate
             } else {
                 // Save the generated image in the public/certificates folder
                 $img->save($path); // Save the image to the specified path
-    
+
                 // Optionally return the image to the browser
                 return $img->response('png');
             }
         }
-    
+
         abort(404);
     }
-    
+
     public function savebundleCertificate($user, $bundle, $template)
     {
         $certificate = Certificate::where('bundle_id', $bundle->id)
@@ -575,7 +573,7 @@ class MakeCertificate
             'student_id' => $user->id,
             'template_id' => $template->id,
             'type' => 'bundle',
-             'graduation_date' => Carbon::createFromTimestamp((int) $bundle->end_date)->toDateString(),
+            'graduation_date' => Carbon::createFromTimestamp((int) $bundle->end_date)->toDateString(),
             'created_at' => time()
         ];
 

@@ -5,7 +5,9 @@ namespace App\Http\Controllers\Api\Admin;
 use App\Exports\salesExport;
 use App\Http\Controllers\Controller;
 use App\Models\Accounting;
+use App\Models\Api\Organization;
 use App\Models\Bundle;
+use App\Models\Enrollment;
 use App\Models\Group;
 use App\Models\Order;
 use App\Models\Product;
@@ -16,6 +18,7 @@ use App\Models\SaleLog;
 use App\Models\Webinar;
 use App\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
 use Maatwebsite\Excel\Facades\Excel;
 
@@ -72,7 +75,7 @@ class EnrollmentsController extends Controller
                 ->whereIn('id', $webinar_ids)->get();
         }
 
-        
+
 
         return response()->json([
             'success' => true,
@@ -148,7 +151,6 @@ class EnrollmentsController extends Controller
 
     public function store(Request $request)
     {
-
         $this->authorize('admin_enrollment_add_student_to_items');
 
         $data = $request->all();
@@ -168,189 +170,189 @@ class EnrollmentsController extends Controller
         $validator = Validator::make($data, $rules);
 
         if ($validator->fails()) {
-            if ($request->ajax()) {
-                return response([
-                    'code' => 422,
-                    'errors' => $validator->errors(),
-                ], 422);
-            } else {
-                return back()->withErrors($validator->errors()->getMessages());
-            }
+            return response()->json([
+                'code' => 422,
+                'errors' => $validator->errors(),
+            ], 422);
         }
 
         $user = User::find($data['user_id']);
 
-        if (!empty($user)) {
-            $sellerId = null;
-            $itemType = null;
-            $itemId = null;
-            $itemColumnName = null;
-            $checkUserHasBought = false;
-            $isOwner = false;
-            $product = null;
+        if (!$user) {
+            return response()->json([
+                'code' => 404,
+                'errors' => ['user_id' => ['User not found']],
+            ], 404);
+        }
 
-            if (!empty($data['webinar_id'])) {
-                $course = Webinar::find($data['webinar_id']);
+        $sellerId = null;
+        $itemType = null;
+        $itemId = null;
+        $itemColumnName = null;
+        $checkUserHasBought = false;
+        $isOwner = false;
+        $product = null;
+        $lastGroup = null;
 
-                if (!empty($course)) {
-                    $sellerId = $course->creator_id;
-                    $itemId = $course->id;
-                    $itemType = Sale::$webinar;
-                    $itemColumnName = 'webinar_id';
-                    $isOwner = $course->isOwner($user->id);
+        if (!empty($data['webinar_id'])) {
+            $course = Webinar::find($data['webinar_id']);
+            if ($course) {
+                Log::info('Course found: ' . $course->id);
+            };
+            if ($course) {
+                $sellerId = $course->creator_id;
+                $itemId = $course->id;
+                $itemType = Sale::$webinar;
+                $itemColumnName = 'webinar_id';
+                $isOwner = $course->isOwner($user->id);
+                $checkUserHasBought = $course->checkUserHasBought($user);
 
-                    $checkUserHasBought = $course->checkUserHasBought($user);
-                    $lastGroup = Group::where('webinar_id', $course->id)->latest()->first();
-                    $startDate = now()->addMonth()->startOfMonth();
-                    $endDate = now()->addMonth(2)->startOfMonth();
-                    if (!$lastGroup) {
-                        $lastGroup = Group::create(['name' => 'A', 'creator_id' => 1, 'webinar_id' => $course->id, 'capacity' => 20, 'start_date' => $startDate, 'end_date' => $endDate]);
-                    }
-                    $enrollments = $lastGroup->enrollments->count();
-                    if ($enrollments >= $lastGroup->capacity || $lastGroup->start_date < now()) {
-                        $lastGroup = Group::create([
-                            'name' => chr(ord($lastGroup->name) + 1),
-                            'creator_id' => 1,
-                            'webinar_id' => $course->id,
-                            'capacity' => 20,
-                            'start_date' => $startDate,
-                            'end_date' => $endDate
-                        ]);
-                    }
-                }
-            } elseif (!empty($data['bundle_id'])) {
+                $lastGroup = Group::where('webinar_id', $course->id)->latest()->first();
+                $startDate = now()->addMonth()->startOfMonth();
+                $endDate = now()->addMonth(2)->startOfMonth();
 
-                $bundle = Bundle::find($data['bundle_id']);
-
-                if (!empty($bundle)) {
-                    $sellerId = $bundle->creator_id;
-                    $itemId = $bundle->id;
-                    $itemType = Sale::$bundle;
-                    $itemColumnName = 'bundle_id';
-                    $isOwner = $bundle->isOwner($user->id);
-
-                    $checkUserHasBought = $bundle->checkUserHasBought($user);
-                }
-            } elseif (!empty($data['product_id'])) {
-
-                $product = Product::find($data['product_id']);
-
-                if (!empty($product)) {
-                    $sellerId = $product->creator_id;
-                    $itemId = $product->id;
-                    $itemType = Sale::$product;
-                    $itemColumnName = 'product_order_id';
-
-                    $isOwner = ($product->creator_id == $user->id);
-
-                    $checkUserHasBought = $product->checkUserHasBought($user);
-                }
-            }
-
-            $errors = [];
-
-            if ($isOwner) {
-                $errors = [
-                    'user_id' => [trans('cart.cant_purchase_your_course')],
-                    'webinar_id' => [trans('cart.cant_purchase_your_course')],
-                    'bundle_id' => [trans('cart.cant_purchase_your_course')],
-                    'product_id' => [trans('update.cant_purchase_your_product')],
-                ];
-            }
-
-            if ((empty($errors) or !count($errors)) and $checkUserHasBought) {
-                $errors = [
-                    'user_id' => [trans('site.you_bought_webinar')],
-                    'webinar_id' => [trans('site.you_bought_webinar')],
-                    'bundle_id' => [trans('update.you_bought_bundle')],
-                    'product_id' => [trans('update.you_bought_product')],
-                ];
-            }
-
-            if (!empty($errors) and count($errors)) {
-                if ($request->ajax()) {
-                    return response([
-                        'code' => 422,
-                        'errors' => $errors,
-                    ], 422);
-                } else {
-                    return back()->withErrors($errors);
-                }
-            }
-
-            if (!empty($itemType) and !empty($itemId) and !empty($itemColumnName) and !empty($sellerId)) {
-
-                $productOrder = null;
-                if (!empty($product)) {
-                    $productOrder = ProductOrder::create([
-                        'product_id' => $product->id,
-                        'seller_id' => $product->creator_id,
-                        'buyer_id' => $user->id,
-                        'specifications' => null,
-                        'quantity' => 1,
-                        'status' => 'pending',
-                        'created_at' => time()
+                if (!$lastGroup || $lastGroup->enrollments->count() >= $lastGroup->capacity || $lastGroup->start_date < now()) {
+                    $lastGroup = Group::create([
+                        'name' => $lastGroup ? chr(ord($lastGroup->name) + 1) : 'A',
+                        'creator_id' => 1,
+                        'webinar_id' => $course->id,
+                        'capacity' => 20,
+                        'start_date' => $startDate,
+                        'end_date' => $endDate
                     ]);
-
-                    $itemId = $productOrder->id;
-                    $itemType = Sale::$product;
-                    $itemColumnName = 'product_order_id';
+                    Log::info('Created/using group: ' . $lastGroup->id);
                 }
+            }
+        } elseif (!empty($data['bundle_id'])) {
+            $bundle = Bundle::find($data['bundle_id']);
 
-                $sale = Sale::create([
-                    'buyer_id' => $user->id,
-                    'seller_id' => $sellerId,
-                    $itemColumnName => $itemId,
-                    'type' => $itemType,
-                    'manual_added' => true,
-                    'payment_method' => Sale::$credit,
-                    'amount' => 0,
-                    'total_amount' => 0,
-                    'created_at' => time(),
-                ]);
+            if ($bundle) {
+                $sellerId = $bundle->creator_id;
+                $itemId = $bundle->id;
+                $itemType = Sale::$bundle;
+                $itemColumnName = 'bundle_id';
+                $isOwner = $bundle->isOwner($user->id);
+                $checkUserHasBought = $bundle->checkUserHasBought($user);
+            }
+        } elseif (!empty($data['product_id'])) {
+            $product = Product::find($data['product_id']);
 
-                if (!empty($product) and !empty($productOrder)) {
-                    $productOrder->update([
-                        'sale_id' => $sale->id,
-                        'status' => $product->isVirtual() ? ProductOrder::$success : ProductOrder::$waitingDelivery,
-                    ]);
-                }
-
-                if ($request->ajax()) {
-                    return response()->json([
-                        'code' => 200
-                    ]);
-                } else {
-                    $toastData = [
-                        'title' => trans('public.request_success'),
-                        'msg' => trans('webinars.success_store'),
-                        'status' => 'success'
-                    ];
-                    return redirect(getAdminPanelUrl() . '/enrollments/history')->with(['toast' => $toastData]);
-                }
+            if ($product) {
+                $sellerId = $product->creator_id;
+                $itemId = $product->id;
+                $itemType = Sale::$product;
+                $itemColumnName = 'product_order_id';
+                $isOwner = ($product->creator_id == $user->id);
+                $checkUserHasBought = $product->checkUserHasBought($user);
             }
         }
 
-        $errors = [
-            'user_id' => [trans('update.something_went_wrong')],
-            'webinar_id' => [trans('update.something_went_wrong')],
-            'bundle_id' => [trans('update.something_went_wrong')],
-            'product_id' => [trans('update.something_went_wrong')],
-        ];
+        $errors = [];
 
-        if ($request->ajax()) {
-            return response([
+        if ($isOwner) {
+            $errors = [
+                'user_id' => [trans('cart.cant_purchase_your_course')],
+                'webinar_id' => [trans('cart.cant_purchase_your_course')],
+                'bundle_id' => [trans('cart.cant_purchase_your_course')],
+                'product_id' => [trans('update.cant_purchase_your_product')],
+            ];
+        }
+
+        if (empty($errors) && $checkUserHasBought) {
+            $errors = [
+                'user_id' => [trans('site.you_bought_webinar')],
+                'webinar_id' => [trans('site.you_bought_webinar')],
+                'bundle_id' => [trans('update.you_bought_bundle')],
+                'product_id' => [trans('update.you_bought_product')],
+            ];
+        }
+
+        if (!empty($errors)) {
+            return response()->json([
                 'code' => 422,
                 'errors' => $errors,
             ], 422);
-        } else {
-            return back()->withErrors($errors);
         }
+
+        if (!empty($itemType) && !empty($itemId) && !empty($itemColumnName) && !empty($sellerId)) {
+
+            $productOrder = null;
+
+            if (!empty($product)) {
+                $productOrder = ProductOrder::create([
+                    'product_id' => $product->id,
+                    'seller_id' => $product->creator_id,
+                    'buyer_id' => $user->id,
+                    'specifications' => null,
+                    'quantity' => 1,
+                    'status' => 'pending',
+                    'created_at' => time()
+                ]);
+
+                $itemId = $productOrder->id;
+                $itemType = Sale::$product;
+                $itemColumnName = 'product_order_id';
+            }
+
+            $sale = Sale::create([
+                'buyer_id' => $user->id,
+                'seller_id' => $sellerId,
+                $itemColumnName => $itemId,
+                'type' => $itemType,
+                'manual_added' => true,
+                'payment_method' => Sale::$credit,
+                'amount' => 0,
+                'total_amount' => 0,
+                'created_at' => time(),
+            ]);
+
+            if (!empty($product) && !empty($productOrder)) {
+                $productOrder->update([
+                    'sale_id' => $sale->id,
+                    'status' => $product->isVirtual() ? ProductOrder::$success : ProductOrder::$waitingDelivery,
+                ]);
+            }
+
+            if (!empty($lastGroup)) {
+                Enrollment::create([
+                    'user_id' => $user->id,
+                    'group_id' => $lastGroup->id
+                ]);
+
+                return response()->json([
+                    'message' => 'User enrolled successfully into group ' . $lastGroup->name,
+                    'group_id' => $lastGroup->id,
+                    'user_id' => $user->id
+                ], 200);
+            }
+
+            return response()->json([
+                'code' => 200,
+                'message' => trans('webinars.success_store'),
+            ]);
+        }
+
+        return response()->json([
+            'code' => 422,
+            'errors' => [
+                'user_id' => [trans('update.something_went_wrong')],
+                'webinar_id' => [trans('update.something_went_wrong')],
+                'bundle_id' => [trans('update.something_went_wrong')],
+                'product_id' => [trans('update.something_went_wrong')],
+            ],
+        ], 422);
     }
 
-    public function blockAccess($saleId)
+
+
+    public function blockAccess($url_name, $saleId)
     {
         $this->authorize('admin_enrollment_block_access');
+
+        $organization = Organization::where('url_name', $url_name);
+        if (!$organization) {
+            return response()->json(['message' => 'Organization not found'], 404);
+        }
 
         $sale = Sale::where('id', $saleId)
             ->whereNull('refund_at')
@@ -365,20 +367,22 @@ class EnrollmentsController extends Controller
                 ]);
             }
 
-            $toastData = [
-                'title' => trans('public.request_success'),
+            $data = [
                 'msg' => trans('update.delete-student-access_successfully'),
                 'status' => 'success'
             ];
-            return back()->with(['toast' => $toastData]);
+            return response()->json([$data], 200);
         }
-
-        abort(404);
     }
 
-    public function enableAccess($saleId)
+    public function enableAccess($url_name, $saleId)
     {
         $this->authorize('admin_enrollment_enable_access');
+
+        $organization = Organization::where('url_name', $url_name);
+        if (!$organization) {
+            return response()->json(['message' => 'Organization not found'], 404);
+        }
 
         $sale = Sale::where('id', $saleId)
             ->whereNull('refund_at')
@@ -389,15 +393,12 @@ class EnrollmentsController extends Controller
                 'access_to_purchased_item' => true
             ]);
 
-            $toastData = [
-                'title' => trans('public.request_success'),
+            $data = [
                 'msg' => trans('update.enable-student-access_successfully'),
                 'status' => 'success'
             ];
-            return back()->with(['toast' => $toastData]);
+            return response()->json([$data], 200);
         }
-
-        abort(404);
     }
 
     public function exportExcel(Request $request)

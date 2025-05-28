@@ -85,8 +85,7 @@ class CodesController extends Controller
         $instructorCode = $validated['instructor_code'];
         $lastCode = Code::latest()->first();
 
-
-        if (!$lastCode) {
+        if ($lastCode) {
             $lastCode->update([
                 'instructor_code' => $instructorCode,
             ]);
