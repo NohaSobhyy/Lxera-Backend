@@ -1563,31 +1563,31 @@ function getThemeFontsSettings()
 
             if (!empty($settings[$type]['regular'])) {
                 $result .= "@font-face {
-                      font-family: '$type-font-family';
-                      font-style: normal;
-                      font-weight: 400;
-                      font-display: swap;
-                      src: url({$settings[$type]['regular']}) format('woff2');
+                        font-family: '$type-font-family';
+                        font-style: normal;
+                        font-weight: 400;
+                        font-display: swap;
+                        src: url({$settings[$type]['regular']}) format('woff2');
                     }";
             }
 
             if (!empty($settings[$type]['bold'])) {
                 $result .= "@font-face {
-                      font-family: '$type-font-family';
-                      font-style: normal;
-                      font-weight: bold;
-                      font-display: swap;
-                      src: url({$settings[$type]['bold']}) format('woff2');
+                        font-family: '$type-font-family';
+                        font-style: normal;
+                        font-weight: bold;
+                        font-display: swap;
+                        src: url({$settings[$type]['bold']}) format('woff2');
                     }";
             }
 
             if (!empty($settings[$type]['medium'])) {
                 $result .= "@font-face {
-                      font-family: '$type-font-family';
-                      font-style: normal;
-                      font-weight: 500;
-                      font-display: swap;
-                      src: url({$settings[$type]['medium']}) format('woff2');
+                        font-family: '$type-font-family';
+                        font-style: normal;
+                        font-weight: 500;
+                        font-display: swap;
+                        src: url({$settings[$type]['medium']}) format('woff2');
                     }";
             }
         }
@@ -1630,7 +1630,7 @@ function getDefaultLocale()
 
         $value = [];
 
-        if (!empty ($setting) and !empty ($setting->value) and isset ($setting->value)) {
+        if (!empty($setting) and !empty($setting->value) and isset($setting->value)) {
             $value = json_decode($setting->value, true);
         }
 
@@ -1670,7 +1670,7 @@ function sendNotification($template, $options, $user_id = null, $group_id = null
         $title = str_replace(array_keys($options), array_values($options), $notificationTemplate->title);
 
         if (!empty($options['[c.title]'])) {
-            if($options['[c.title]'] == "سند سداد") {
+            if ($options['[c.title]'] == "سند سداد") {
                 $notificationTemplate->template = "تهانينا تم سدادكم قسط البرنامج [c.bundle] بقيمة [amount]";
             }
             // if ($options['[c.title]'] == "رسوم حجز مقعد دراسي" && !empty($options['[c.early]'])) {
@@ -1680,13 +1680,13 @@ function sendNotification($template, $options, $user_id = null, $group_id = null
             // }
 
         }
-       
+
         $message = str_replace(array_keys($options), array_values($options), $notificationTemplate->template);
 
         if (!empty($options['[r.btn]'])) {
-            
+
             $message .= "<br><br>" . $options['[r.btn]'];
-           // dd($message);
+            // dd($message);
         }
 
         // If the [c.message] is available in the options, append it to the message
@@ -1697,18 +1697,17 @@ function sendNotification($template, $options, $user_id = null, $group_id = null
 
         if (!empty($options['[p.body]'])) {
             $notificationTemplate->template = "[p.body] بقيمه [amount]";
-
         }
 
 
-       
+
         $check = \App\Models\Notification::where('user_id', $user_id)
-        ->where('group_id', $group_id)
-        ->where('title', $title)
-        ->where('message', $message)
-        ->where('sender', $sender)
-        ->where('type', $type)
-        ->first();
+            ->where('group_id', $group_id)
+            ->where('title', $title)
+            ->where('message', $message)
+            ->where('sender', $sender)
+            ->where('type', $type)
+            ->first();
 
         $ignoreDuplicateTemplates = ['new_badge', 'registration_package_expired'];
 
@@ -1730,13 +1729,12 @@ function sendNotification($template, $options, $user_id = null, $group_id = null
                 if (!empty($user) and !empty($user->email)) {
                     $name = $user->student ? $user->student->ar_name : $user->fullname;
                     try {
-                    
-                        Mail::to($user->email)->send(new \App\Mail\SendNotifications(['title' => $title, 'message' => $message, 'name' => $name]));
 
+                        Mail::to($user->email)->send(new \App\Mail\SendNotifications(['title' => $title, 'message' => $message, 'name' => $name]));
                     } catch (Exception $exception) {
                         // dd($exception)
                     }
-               }
+                }
             }
         }
 
@@ -2320,28 +2318,28 @@ function convertToMB($size, $unit = 'B')
 }
 
 function generateStudentCode()
-    {
-        // USER CODE
-        $lastCode = Code::latest()->first();
-        if (!empty($lastCode)) {
-            if (empty($lastCode->lst_sd_code)) {
-                $lastCode->lst_sd_code = $lastCode->student_code;
-            }
-            $lastCodeAsInt = intval(substr($lastCode->lst_sd_code, 2));
-            do {
-                $nextCodeAsInt = $lastCodeAsInt + 1;
-                $nextCode = 'SD' . str_pad($nextCodeAsInt, 5, '0', STR_PAD_LEFT);
-
-                $codeExists = User::where('user_code', $nextCode)->exists();
-
-                if ($codeExists) {
-                    $lastCodeAsInt = $nextCodeAsInt;
-                } else {
-                    break;
-                }
-            } while (true);
-
-            return $nextCode;
+{
+    // USER CODE
+    $lastCode = Code::latest()->first();
+    if (!empty($lastCode)) {
+        if (empty($lastCode->lst_sd_code)) {
+            $lastCode->lst_sd_code = $lastCode->student_code;
         }
-        return 'SD00001';
+        $lastCodeAsInt = intval(substr($lastCode->lst_sd_code, 2));
+        do {
+            $nextCodeAsInt = $lastCodeAsInt + 1;
+            $nextCode = 'SD' . str_pad($nextCodeAsInt, 5, '0', STR_PAD_LEFT);
+
+            $codeExists = User::where('user_code', $nextCode)->exists();
+
+            if ($codeExists) {
+                $lastCodeAsInt = $nextCodeAsInt;
+            } else {
+                break;
+            }
+        } while (true);
+
+        return $nextCode;
     }
+    return 'SD00001';
+}

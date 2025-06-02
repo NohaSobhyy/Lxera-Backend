@@ -1,5 +1,10 @@
 <?php
 
+use App\Http\Controllers\Admin\AgoraHistoryController;
+use App\Http\Controllers\Api\Admin\BundleController;
+use App\Http\Controllers\Api\Admin\WebinarStatisticController;
+use App\Http\Controllers\Api\Admin\WebinarController;
+use App\Http\Controllers\Api\Admin\UserController;
 use App\Http\Controllers\Api\Admin\CategoryController;
 use App\Http\Controllers\Api\Admin\EnrollmentsController;
 use App\Http\Controllers\Api\Admin\CodesController;
@@ -87,6 +92,7 @@ Route::prefix('{url_name}')->group(function () {
         // Certificates
         Route::prefix('certificates')->group(function () {
             Route::get('/', [CertificatesController::class, 'index']);
+            Route::get('/{id}/download', [CertificatesController::class, 'CertificatesDownload']);
             Route::get('/excel', [CertificatesController::class, 'exportExcel']);
             Route::get('/course-competition', [WebinarCertificateController::class, 'index']);
             Route::prefix('templates')->group(function () {
@@ -112,6 +118,37 @@ Route::prefix('{url_name}')->group(function () {
             Route::post('/', [CategoryController::class, 'store']);
             Route::put('/{id}/update', [CategoryController::class, 'update']);
             Route::delete('/{id}/delete', [CategoryController::class, 'destroy']);
+        });
+
+        // Course Registration
+        Route::prefix('courses')->group(function () {
+            Route::get('/list', [UserController::class, 'coursesList']);
+        });
+
+        // Courses
+        Route::prefix('webinars')->group(function () {
+            Route::get('/', [WebinarController::class, 'index']);
+            Route::get('/excel', [WebinarController::class, 'exportExcel']);
+            Route::get('/{id}/approve', [WebinarController::class, 'approve']);
+            Route::get('/{id}/reject', [WebinarController::class, 'reject']);
+            Route::get('/{id}/unpublish', [WebinarController::class, 'unpublish']);
+            Route::post('/{id}/sendNotification', [WebinarController::class, 'sendNotificationToStudents']);
+            Route::get('/{id}/students', [WebinarController::class, 'studentsLists']);
+            Route::get('/{id}/students/export', [WebinarController::class, 'exportStudents']);
+            Route::get('/{id}/statistics', [WebinarStatisticController::class, 'index']);
+            Route::post('/', [WebinarController::class, 'store']);
+            Route::put('/{id}', [WebinarController::class, 'update']);
+            Route::delete('/{id}', [WebinarController::class, 'destroy']);
+        });
+
+        // Bundles
+        Route::prefix('bundles')->group(function () {
+            Route::get('/', [BundleController::class, 'index']);
+            Route::post('/{id}/sendNotification', [BundleController::class, 'sendNotificationToStudents']);
+            Route::get('/{id}/students', [BundleController::class, 'studentsLists']);
+            Route::post('/', [BundleController::class, 'store']);
+            Route::put('/{id}', [BundleController::class, 'update']);
+            Route::delete('/{id}', [BundleController::class, 'destroy']);
         });
     });
 });

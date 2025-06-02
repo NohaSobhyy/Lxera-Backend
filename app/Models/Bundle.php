@@ -30,7 +30,10 @@ class Bundle extends Model implements TranslatableContract
     static $inactive = 'inactive';
 
     static $statuses = [
-        'active', 'pending', 'is_draft', 'inactive'
+        'active',
+        'pending',
+        'is_draft',
+        'inactive'
     ];
 
     static $videoDemoSource = ['upload', 'youtube', 'vimeo', 'external_link'];
@@ -44,7 +47,7 @@ class Bundle extends Model implements TranslatableContract
     public function studentsExcluded()
     {
         // return $this->hasMany(StudentExceptionCertificate::class, 'bundle_id');
-        return $this->belongsToMany(Student::class,'student_exception_certificate');
+        return $this->belongsToMany(Student::class, 'student_exception_certificate');
     }
 
     public function service()
@@ -72,7 +75,8 @@ class Bundle extends Model implements TranslatableContract
         return $this->belongsTo('App\User', 'creator_id', 'id');
     }
 
-    public function teacher(){
+    public function teacher()
+    {
         return $this->belongsTo('App\User', 'teacher_id', 'id');
     }
 
@@ -80,14 +84,17 @@ class Bundle extends Model implements TranslatableContract
     {
         return $this->belongsTo('App\Models\Category', 'category_id', 'id');
     }
-    public function bridgings(){
+    public function bridgings()
+    {
         return $this->hasMany('App\Models\BundleBridging', 'bridging_id', 'id');
     }
 
-    public function bridgingBundles(){
+    public function bridgingBundles()
+    {
         return $this->belongsToMany('App\Models\Bundle', 'bundle_bridging', 'bridging_id', 'from_bundle_id');
     }
-    public function additionBundles(){
+    public function additionBundles()
+    {
         return $this->belongsToMany('App\Models\Bundle', 'bundle_additions', 'bundle_id', 'addition_bundle_id');
     }
 
@@ -125,7 +132,8 @@ class Bundle extends Model implements TranslatableContract
     {
         return $this->hasMany('App\Models\Faq', 'bundle_id', 'id');
     }
-     public function certificate_template()
+
+    public function certificate_template()
     {
         return $this->belongsToMany(CertificateTemplate::class);
     }
@@ -142,9 +150,7 @@ class Bundle extends Model implements TranslatableContract
 
     public function sales()
     {
-        return $this->hasMany('App\Models\Sale', 'bundle_id', 'id')
-            ->whereNull('refund_at')
-            ->where('type', 'bundle');
+        return $this->hasMany('App\Models\Sale', 'bundle_id', 'id');
     }
 
     // function formFeeSales(){
@@ -153,54 +159,59 @@ class Bundle extends Model implements TranslatableContract
     //     ->where('type', 'form_fee');
     // }
     public function formFeeSales($class_id = null)
-{
-    $formFeeSalesQuery = Sale::where('bundle_id', $this->id)
-        ->whereNull('refund_at')
-        ->where('type', 'form_fee')
-        ->whereNotExists(function ($query) {
-            $query->selectRaw(1)
-                ->from('sales as s2')
-                ->whereRaw('s2.bundle_id = sales.bundle_id')
-                ->where(function ($query) {
-                    $query->where('s2.type', 'bundle')
-                        ->orWhere('s2.type', 'installment_payment')
-                        ->orWhere('s2.type', 'bridging');
-                })
-                ->whereRaw('s2.buyer_id = sales.buyer_id');
-        });
+    {
+        $formFeeSalesQuery = Sale::where('bundle_id', $this->id)
+            ->whereNull('refund_at')
+            ->where('type', 'form_fee')
+            ->whereNotExists(function ($query) {
+                $query->selectRaw(1)
+                    ->from('sales as s2')
+                    ->whereRaw('s2.bundle_id = sales.bundle_id')
+                    ->where(function ($query) {
+                        $query->where('s2.type', 'bundle')
+                            ->orWhere('s2.type', 'installment_payment')
+                            ->orWhere('s2.type', 'bridging');
+                    })
+                    ->whereRaw('s2.buyer_id = sales.buyer_id');
+            });
 
-    // If a class_id is provided, filter by class_id
-    if (!empty($class_id)) {
-        $formFeeSalesQuery = $formFeeSalesQuery->where('class_id', $class_id);
+        // If a class_id is provided, filter by class_id
+        if (!empty($class_id)) {
+            $formFeeSalesQuery = $formFeeSalesQuery->where('class_id', $class_id);
+        }
+
+        // Return the query itself, or you can directly return the count like this:
+        return $formFeeSalesQuery;
     }
-
-    // Return the query itself, or you can directly return the count like this:
-    return $formFeeSalesQuery;
-}
-    function only_formFeeSales(){
-        return $this->hasMany('App\Models\Sale', 'bundle_id', 'id')
-        ->whereNull('refund_at')
-        ->where('type', 'form_fee');
-    }
-
-    function bundleSales(){
+    function only_formFeeSales()
+    {
         return $this->hasMany('App\Models\Sale', 'bundle_id', 'id')
             ->whereNull('refund_at')
-        ->whereIn('type', ['bundle', 'installment_payment'])->where('payment_method', '!=', 'scholarship')->groupBy('buyer_id');
-    }
-    function bundleSalesBridging(){
-        return $this->hasMany('App\Models\Sale', 'bundle_id', 'id')
-            ->whereNull('refund_at')
-        ->whereIn('type', ['bundle', 'installment_payment','bridging'])->where('payment_method', '!=', 'scholarship')->groupBy('buyer_id');
+            ->where('type', 'form_fee');
     }
 
-    function scholarshipSales(){
+    function bundleSales()
+    {
         return $this->hasMany('App\Models\Sale', 'bundle_id', 'id')
             ->whereNull('refund_at')
-            ->where('type', 'bundle')->where('payment_method','scholarship');
+            ->whereIn('type', ['bundle', 'installment_payment'])->where('payment_method', '!=', 'scholarship')->groupBy('buyer_id');
+    }
+    function bundleSalesBridging()
+    {
+        return $this->hasMany('App\Models\Sale', 'bundle_id', 'id')
+            ->whereNull('refund_at')
+            ->whereIn('type', ['bundle', 'installment_payment', 'bridging'])->where('payment_method', '!=', 'scholarship')->groupBy('buyer_id');
     }
 
-    function directRegister(){
+    function scholarshipSales()
+    {
+        return $this->hasMany('App\Models\Sale', 'bundle_id', 'id')
+            ->whereNull('refund_at')
+            ->where('type', 'bundle')->where('payment_method', 'scholarship');
+    }
+
+    function directRegister()
+    {
         return $this->hasMany(BundleStudent::class, 'bundle_id', 'id')->whereNull('class_id');
     }
     /**
@@ -645,10 +656,12 @@ class Bundle extends Model implements TranslatableContract
     }
 
 
-    public function batch(){
+    public function batch()
+    {
         return $this->belongsTo(StudyClass::class, 'batch_id');
     }
-    public function groups(){
+    public function groups()
+    {
         return $this->hasMany(Group::class, 'bundle_id');
     }
 

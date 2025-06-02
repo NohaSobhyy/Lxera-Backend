@@ -401,16 +401,6 @@ class CertificatesController extends Controller
         if (!$organization) {
             return response()->json(['message' => 'This organization was not found.'], 404);
         }
-        $certificate = Certificate::findOrFail($id);
-
-        $templatePath = public_path('certificates\template.jpg');
-
-        if (!file_exists($templatePath)) {
-            return response()->json(['error' => 'Certificate template not found.'], 404);
-        }
-
-        $image = Image::make($templatePath);
-
 
         $certificate = Certificate::findOrFail($id);
         if (!$certificate) {
@@ -449,10 +439,12 @@ class CertificatesController extends Controller
                 return response()->json(['message' => 'Invalid certificate type.'], 400);
         }
 
+        $filePath = 'http://127.0.0.1:8000/admin/certificates/' . $id . '/download';
+
         return response()->json([
             'message' => 'Certificate generated successfully.',
-            'data' => $certificateData
-        ]);
+            'data' => $filePath
+        ], 200,  [], JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE);
     }
 
     public function deleteSelected(Request $request)

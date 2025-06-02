@@ -182,7 +182,7 @@ class MakeCertificate
     {
 
         // Load the background image
-        $img = Image::make(public_path($certificateTemplate->image));
+   $img = Image::make(public_path($certificateTemplate->image));
 
         $fontPath2 = public_path('assets/default/fonts/Trajan-Bold.otf'); // Bold font path
         $fontPath = public_path('assets/default/fonts/Trajan-Regular.ttf'); // Regular font path

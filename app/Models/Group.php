@@ -47,5 +47,9 @@ class Group extends Model
     {
         return (!empty($this->bundle_id))? $this->belongsTo(Bundle::class, 'bundle_id') : $this->belongsTo(Webinar::class, 'webinar_id');
     }
-
+    public function sales()
+    {
+        return $this->hasMany(Sale::class, 'webinar_id') ;
+    }
+    
 }

@@ -35,7 +35,10 @@ class Webinar extends Model implements TranslatableContract
     static $newGraduationProject = 'newGraduation_project';
 
     static $statuses = [
-        'active', 'pending', 'is_draft', 'inactive'
+        'active',
+        'pending',
+        'is_draft',
+        'inactive'
     ];
 
     static $videoDemoSource = ['upload', 'youtube', 'vimeo', 'external_link'];
@@ -44,12 +47,12 @@ class Webinar extends Model implements TranslatableContract
 
     public function studentsExcluded()
     {
-       return $this->belongsToMany(Student::class,'student_exception_certificate');
+        return $this->belongsToMany(Student::class, 'student_exception_certificate');
     }
 
     public function bundleProfessionalWebinars()
     {
-        return $this->belongsToMany(Webinar::class, 'bundle_Professional_course','webinar_id', 'bundle_id');
+        return $this->belongsToMany(Webinar::class, 'bundle_Professional_course', 'webinar_id', 'bundle_id');
     }
 
     public function service()
@@ -210,9 +213,7 @@ class Webinar extends Model implements TranslatableContract
 
     public function sales()
     {
-        return $this->hasMany('App\Models\Sale', 'webinar_id', 'id')
-            ->whereNull('refund_at')
-            ->where('type', 'webinar');
+        return $this->hasMany('App\Models\Sale', 'webinar_id', 'id');
     }
 
     public function feature()
@@ -1153,7 +1154,7 @@ class Webinar extends Model implements TranslatableContract
         $user = auth()->user() ?? auth('api')->user();
         $now = \Carbon\Carbon::now();
 
-        if(empty($this->unattached)){
+        if (empty($this->unattached)) {
             return true;
         }
 
