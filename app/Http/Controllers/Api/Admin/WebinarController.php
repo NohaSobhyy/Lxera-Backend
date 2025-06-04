@@ -1251,20 +1251,25 @@ class WebinarController extends Controller
         abort(403);
     }
 
-    public function statistics(Request $request)
+    public function statistics()
     {
-        $this->authorize('admin_programs_statistics_webinars_list');
+        // $this->authorize('admin_programs_statistics_webinars_list')
 
         removeContentLocale();
 
         $webinars = Webinar::where('unattached', 1)->get();
 
-
+        $webinarData =[];
+        foreach ($webinars as $webinar) {
+            $webinarData[] = [
+                'webinarsTitle' => $webinar->title,
+                'webinarsStudentsCount' => $webinar->sales->count()
+            ];
+        }
         $data = [
-            'pageTitle' => 'إحصائيات التسجيل في الدورات',
-            'webinars' => $webinars,
+            'webinars' => $webinarData,
         ];
 
-        return view('admin.webinars.statistics', $data);
+        return response()->json($data);
     }
 }

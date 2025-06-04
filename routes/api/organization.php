@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Admin\AgoraHistoryController;
+use App\Http\Controllers\Api\Admin\AssignmentsController;
 use App\Http\Controllers\Api\Admin\BundleController;
 use App\Http\Controllers\Api\Admin\WebinarStatisticController;
 use App\Http\Controllers\Api\Admin\WebinarController;
@@ -15,6 +16,7 @@ use App\Http\Controllers\Api\Panel\UsersController;
 use App\Http\Controllers\Api\Admin\ServicesController;
 use App\Http\Controllers\Api\Admin\StudyClassesController;
 use App\Http\Controllers\Api\Admin\CertificatesController;
+use App\Http\Controllers\Api\Admin\QuizzesController;
 use App\Http\Controllers\Api\Admin\WebinarCertificateController;
 use Illuminate\Support\Facades\Route;
 
@@ -149,6 +151,24 @@ Route::prefix('{url_name}')->group(function () {
             Route::post('/', [BundleController::class, 'store']);
             Route::put('/{id}', [BundleController::class, 'update']);
             Route::delete('/{id}', [BundleController::class, 'destroy']);
+        });
+
+        // Programs Statistics
+        Route::prefix('programs_statistics')->group(function () {
+            Route::get('/bundles', [BundleController::class, 'statistics']);
+            Route::get('/webinars', [WebinarController::class, 'statistics']);
+        });
+
+        // Quizzes
+        Route::prefix('quizzes')->group(function () {
+            Route::get('/', [QuizzesController::class, 'index']);
+            Route::get('/excel', [QuizzesController::class, 'exportExcel']);
+            Route::get('/{id}/results', [QuizzesController::class, 'results']);
+            Route::get('/{id}/results/excel', [QuizzesController::class, 'resultsExportExcel']);
+            Route::delete('/result/{result_id}', [QuizzesController::class, 'resultDelete']);
+            Route::post('/', [QuizzesController::class, 'store']);
+            Route::put('/{id}', [QuizzesController::class, 'update']);
+            Route::delete('/{id}', [QuizzesController::class, 'delete']);
         });
     });
 });

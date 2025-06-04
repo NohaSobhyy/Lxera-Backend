@@ -1032,9 +1032,14 @@ class BundleController extends Controller
         return response()->json($bundles, 200);
     }
 
-    public function statistics(Request $request)
+    public function statistics($url_name, Request $request)
     {
-        $this->authorize('admin_programs_statistics_bundles_list');
+        $organization = Organization::where('url_name', $url_name)->first();
+        if (!$organization) {
+            return response()->json(['message' => 'Organization not found'], 404);
+        }
+
+        // $this->authorize('admin_programs_statistics_bundles_list');
 
         removeContentLocale();
 
@@ -1056,6 +1061,10 @@ class BundleController extends Controller
         $query = $this->handleFilters($query, $request)
             ->with([
                 'category',
+                'batch',
+                'bundleSales',
+                'directRegister',
+                'scholarshipSales',
                 'teacher' => function ($qu) {
                     $qu->select('id', 'full_name');
                 },
@@ -1067,7 +1076,8 @@ class BundleController extends Controller
                 'bundleWebinars'
             ]);
 
-        $bundles = $query->paginate(10);
+        $bundlesData = [];
+        $bundles = $query->get();
 
         foreach ($bundles as $bundle) {
             $giftsIds = Gift::query()->where('bundle_id', $bundle->id)
@@ -1088,13 +1098,20 @@ class BundleController extends Controller
                 ->whereNull('refund_at')
                 ->get();
 
-            $bundle->sales = $sales;
+            $bundlesData[] = [
+                'id' => $bundle->id,
+                'title' => $bundle->title,
+                'batch_title' => $bundle->batch->title ?? '--',
+                'form_fee_sales_count' => $bundle->formFeeSales()->count(),
+                'bundle_sales_count' => $bundle->bundleSales->count(),
+                'direct_register_count' => $bundle->directRegister->count(),
+                'scholarship_sales_count' => $bundle->scholarshipSales->count(),
+                // optional other fields
+            ];
         }
 
-
         $data = [
-            'pageTitle' => 'إحصائيات التسجيل في البرامج',
-            'bundles' => $bundles,
+            'bundles' => $bundlesData,
             'totalBundles' => $totalBundles,
             'totalPendingBundles' => $totalPendingBundles,
             'totalSales' => $totalSales,
@@ -1107,7 +1124,10 @@ class BundleController extends Controller
             $data['teachers'] = User::select('id', 'full_name')->whereIn('id', $teacher_ids)->get();
         }
 
-        return view('admin.bundles.statistics', $data);
+        return response()->json([
+            'status' => 'success',
+            'data' => $data
+        ]);
     }
 
     public function groups(Request $request, Bundle $bundle, $is_export_excel = false)
