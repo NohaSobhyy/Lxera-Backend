@@ -170,5 +170,13 @@ Route::prefix('{url_name}')->group(function () {
             Route::put('/{id}', [QuizzesController::class, 'update']);
             Route::delete('/{id}', [QuizzesController::class, 'delete']);
         });
+
+        // Assignments
+        Route::prefix('assignments')->group(function () {
+            Route::get('/', [AssignmentsController::class, 'index']);
+            Route::get('/{id}/students', [AssignmentsController::class, 'students']);
+            Route::get('/{assignmentId}/history/{historyId}/conversations', [AssignmentsController::class, 'conversations']);
+            Route::put('/{id}', [AssignmentsController::class, 'update']);
+        });
     });
 });

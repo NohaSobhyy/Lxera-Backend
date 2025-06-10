@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\Api\Organization;
 use App\Models\File;
 use App\Models\Sale;
 use App\Models\Translation\WebinarAssignmentTranslation;
@@ -13,6 +14,7 @@ use App\Models\WebinarAssignmentHistory;
 use App\Models\WebinarChapterItem;
 use App\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
 
 class AssignmentsController extends Controller
@@ -52,8 +54,20 @@ class AssignmentsController extends Controller
         ])
             ->orderBy('created_at', 'desc')
             ->get();
-
+        $assignmentsData = [];
+        foreach ($assignments as $assignment) {
+            $assignmentsData[] = [
+                'assignmentId' => $assignment->id,
+                'assignmentTitle' => $assignment->title,
+                'webinarTitle' => $assignment->webinar->title,
+                'students' => $assignment->instructorAssignmentHistories,
+                'assignmentGrade' => $assignment->grade,
+                'assignmentPassGrade' => $assignment->pass_grade,
+                'assignmentStatus' => $assignment->status
+            ];
+        }
         $data = [
+            'assignmentsTable' => $assignmentsData,
             'assignments' => $assignments,
             'courseAssignmentsCount' => $courseAssignmentsCount,
             'pendingReviewCount' => $pendingReviewCount,
@@ -97,8 +111,13 @@ class AssignmentsController extends Controller
         return $query;
     }
 
-    public function students(Request $request, $id)
+    public function students($url_name, Request $request, $id)
     {
+        $organization = Organization::where('url_name', $url_name);
+        if (!$organization) {
+            return response()->json(['message' => 'Organization not found'], 404);
+        }
+
         $this->authorize('admin_webinar_assignments_students');
 
         $assignment = WebinarAssignment::findOrFail($id);
@@ -117,7 +136,7 @@ class AssignmentsController extends Controller
         $query = $this->handleAssignmentsFilters($request, $query);
 
         $histories = $query->orderBy('created_at', 'desc')
-            ->paginate(10);
+            ->get();
 
         foreach ($histories as &$history) {
             $history->usedAttemptsCount = 0;
@@ -137,13 +156,11 @@ class AssignmentsController extends Controller
                     $history->first_submission = $history->messages->last()->created_at;
                     $history->usedAttemptsCount = $history->messages->count();
                 } catch (\Exception $exception) {
-
                 }
             }
         }
 
         $data = [
-            'pageTitle' => trans('update.students_assignments'),
             'assignment' => $assignment,
             'histories' => $histories,
             'webinar' => $webinar,
@@ -157,11 +174,16 @@ class AssignmentsController extends Controller
             $data['students'] = User::select('id', 'full_name')->whereIn('id', $student_ids)->get();
         }
 
-        return view('admin.webinars.assignments.students', $data);
+        return response()->json($data);
     }
 
-    public function conversations($assignmentId, $historyId)
+    public function conversations($url_name, $assignmentId, $historyId)
     {
+        $organization = Organization::where('url_name', $url_name);
+        if (!$organization) {
+            return response()->json(['message' => 'Organization not found'], 404);
+        }
+
         $this->authorize('admin_webinar_assignments_conversations');
 
         $assignment = WebinarAssignment::findOrFail($assignmentId);
@@ -179,12 +201,12 @@ class AssignmentsController extends Controller
 
         if (!empty($history)) {
             $data = [
-                'pageTitle' => trans('update.assignment_conversations'),
+                'status' => 'success',
                 'assignment' => $assignment,
                 'conversations' => $history->messages,
             ];
 
-            return view('admin.webinars.assignments.conversation', $data);
+            return response()->json($data);
         }
 
         abort(404);
@@ -214,8 +236,8 @@ class AssignmentsController extends Controller
         }
 
         // if (!empty($data['sequence_content']) and $data['sequence_content'] == 'on') {
-            $data['check_previous_parts'] = (!empty($data['check_previous_parts']) and $data['check_previous_parts'] == 'on');
-            $data['access_after_day'] = !empty($data['access_after_day']) ? strtotime($data['access_after_day']) : null;
+        $data['check_previous_parts'] = (!empty($data['check_previous_parts']) and $data['check_previous_parts'] == 'on');
+        $data['access_after_day'] = !empty($data['access_after_day']) ? strtotime($data['access_after_day']) : null;
         // } else {
         //     $data['check_previous_parts'] = false;
         //     $data['access_after_day'] = null;
@@ -287,79 +309,109 @@ class AssignmentsController extends Controller
         ]);
     }
 
-    public function update(Request $request, $id)
+    public function update($url_name, Request $request, $id)
     {
+
+        $organization = Organization::where('url_name', $url_name)->first();
+        if (!$organization) {
+            return response()->json(['message' => 'Organization not found'], 404);
+        }
+
         $this->authorize('admin_webinars_edit');
 
-        $data = $request->get('ajax')[$id];
+        $data = $request->all();
 
+        $jsonData = $request->json()->all();
+
+        if (!$data) {
+            return response()->json([
+                'code' => 422,
+                'errors' => ['Invalid input data.'],
+            ], 422);
+        }
+
+        // Validation rules
         $validator = Validator::make($data, [
-            'webinar_id' => 'required',
-            'chapter_id' => 'required',
-            'title' => 'required|max:255',
-            'description' => 'required',
-            'grade' => 'required|integer',
-            'pass_grade' => 'required|integer',
-            'deadline' => 'required|date',
+            'webinar_id'       => 'required',
+            'chapter_id'       => 'required',
+            'title'            => 'required|max:255',
+            'description'      => 'required',
+            'grade'            => 'required|integer',
+            'pass_grade'       => 'required|integer',
+            'deadline'         => 'required|date',
         ]);
 
         if ($validator->fails()) {
-            return response([
+            return response()->json([
                 'code' => 422,
                 'errors' => $validator->errors(),
             ], 422);
         }
 
-        // if (!empty($data['sequence_content']) and $data['sequence_content'] == 'on') {
-            $data['check_previous_parts'] = (!empty($data['check_previous_parts']) and $data['check_previous_parts'] == 'on');
-            $data['access_after_day'] = !empty($data['access_after_day']) ? strtotime($data['access_after_day']) : null;
-        // } else {
-        //     $data['check_previous_parts'] = false;
-        //     $data['access_after_day'] = null;
-        // }
+        $data['check_previous_parts'] = !empty($data['check_previous_parts']) && $data['check_previous_parts'] === 'on';
+        $data['access_after_day'] = !empty($data['access_after_day']) ? strtotime($data['access_after_day']) : null;
 
-        $assignment = WebinarAssignment::where('id', $id)
-            ->first();
+        $assignment = WebinarAssignment::find($id);
 
-        if (!empty($assignment)) {
-            $changeChapter = ($data['chapter_id'] != $assignment->chapter_id);
-            $oldChapterId = $assignment->chapter_id;
-
-            $assignment->update([
-                'chapter_id' => $data['chapter_id'],
-                'grade' => $data['grade'] ?? null,
-                'pass_grade' => $data['pass_grade'] ?? null,
-                'deadline' => $data['deadline'] ? strtotime($data['deadline']) : null,
-                'attempts' => $data['attempts'] ?? null,
-                'check_previous_parts' => $data['check_previous_parts'],
-                'access_after_day' => $data['access_after_day'],
-                'status' => (!empty($data['status']) and $data['status'] == 'on') ? File::$Active : File::$Inactive,
-            ]);
-
-            if ($changeChapter) {
-                WebinarChapterItem::changeChapter($assignment->creator_id, $oldChapterId, $assignment->chapter_id, $assignment->id, WebinarChapterItem::$chapterAssignment);
-            }
-
-            WebinarAssignmentTranslation::updateOrCreate([
-                'webinar_assignment_id' => $assignment->id,
-                'locale' => mb_strtolower($data['locale']),
-            ], [
-                'title' => $data['title'],
-                'description' => $data['description'],
-            ]);
-
-            $this->handleAttachments($data['attachments'], $assignment->creator_id, $assignment->id);
-
-            removeContentLocale();
-
-            return response()->json([
-                'code' => 200,
-            ], 200);
+        if (!$assignment) {
+            return response()->json([], 422);
         }
+
+        $changeChapter = ($data['chapter_id'] != $assignment->chapter_id);
+        $oldChapterId = $assignment->chapter_id;
+
+        // Or for quick debugging:
+        if (empty($data)) {
+            return response()->json(['code' => 422, 'errors' => ['Data is empty']], 422);
+        }
+
+        $assignment->update([
+            'chapter_id'          => $data['chapter_id'],
+            'grade'               => $data['grade'] ?? null,
+            'pass_grade'          => $data['pass_grade'] ?? null,
+            'deadline'            => strtotime($data['deadline']),
+            'attempts'            => $data['attempts'] ?? null,
+            'check_previous_parts' => !empty($data['check_previous_parts']) && ($data['check_previous_parts'] === 'on' || $data['check_previous_parts'] == 1),
+            'access_after_day'    => !empty($data['access_after_day']) ? strtotime($data['access_after_day']) : null,
+            'status'              => (!empty($data['status']) && ($data['status'] === 'on' || $data['status'] == 1)) ? File::$Active : File::$Inactive,
+
+        ]);
+
+        if ($changeChapter) {
+            WebinarChapterItem::changeChapter(
+                $assignment->creator_id,
+                $oldChapterId,
+                $assignment->chapter_id,
+                $assignment->id,
+                WebinarChapterItem::$chapterAssignment
+            );
+        }
+
+        WebinarAssignmentTranslation::updateOrCreate(
+            [
+                'webinar_assignment_id' => $assignment->id,
+                'locale'                => mb_strtolower($data['locale']),
+            ],
+            [
+                'title'       => $data['title'],
+                'description' => $data['description'],
+            ]
+        );
+        if ($validator->fails()) {
+            return response()->json([
+                'code' => 422,
+                'errors' => $validator->errors()->toArray(),
+            ], 422);
+        }
+
+        $this->handleAttachments($data['attachments'] ?? [], $assignment->creator_id, $assignment->id);
 
         removeContentLocale();
 
-        return response()->json([], 422);
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Assignment Updated Successfully'
+        ], 200);
     }
 
     public function destroy($id)
