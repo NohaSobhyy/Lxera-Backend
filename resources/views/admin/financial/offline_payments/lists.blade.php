@@ -100,10 +100,6 @@
                                 </div>
                             </div> --}}
 
-
-
-
-
                             <div class="@if ($pageType == 'requests') col-md-3 @else col-md-2 @endif">
                                 <div class="form-group">
                                     <label class="input-label">{{ trans('admin/main.bank') }}</label>
@@ -118,7 +114,6 @@
                                     </select>
                                 </div>
                             </div>
-
 
                             <div class="@if ($pageType == 'requests') col-md-3 @else col-md-2 @endif">
                                 <div class="form-group">
@@ -136,7 +131,6 @@
                                     </select>
                                 </div>
                             </div>
-
 
                             <div class="@if ($pageType == 'requests') col-md-3 @else col-md-2 @endif">
                                 <div class="form-group mt-1">

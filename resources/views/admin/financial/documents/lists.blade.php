@@ -25,8 +25,8 @@
                                         </span>
                                         </div>
                                         <input type="text" name="from" autocomplete="off" class="form-control datefilter"
-                                               aria-describedby="dateInputGroupPrepend"
-                                               value="{{ request()->get('from',null) }}"/>
+                                                aria-describedby="dateInputGroupPrepend"
+                                                value="{{ request()->get('from',null) }}"/>
                                     </div>
                                 </div>
                             </div>
@@ -40,8 +40,8 @@
                                         </span>
                                         </div>
                                         <input type="text" name="to" autocomplete="off" class="form-control datefilter"
-                                               aria-describedby="dateInputGroupPrepend"
-                                               value="{{ request()->get('to',null) }}"/>
+                                                aria-describedby="dateInputGroupPrepend"
+                                                value="{{ request()->get('to',null) }}"/>
                                     </div>
                                 </div>
                             </div>
@@ -153,21 +153,21 @@
                                                             @endif
 
                                                             <a href="{{ !empty($document->webinar) ? $document->webinar->getUrl() : '' }}"
-                                                               target="_blank" class="font-12">#{{ $document->webinar_id }}-{{ !empty($document->webinar) ? $document->webinar->title : '' }}</a>
+                                                                target="_blank" class="font-12">#{{ $document->webinar_id }}-{{ !empty($document->webinar) ? $document->webinar->title : '' }}</a>
                                                         @elseif(!empty($document->bundle_id))
                                                             @if(!$document->is_cashback)
                                                                 <span class="d-block font-weight-bold">{{ trans('update.bundle_purchased') }}</span>
                                                             @endif
 
                                                             <a href="{{ !empty($document->bundle) ? $document->bundle->getUrl() : '' }}"
-                                                               target="_blank" class="font-12">#{{ $document->bundle_id }}-{{ !empty($document->bundle) ? $document->bundle->title : '' }}</a>
+                                                                target="_blank" class="font-12">#{{ $document->bundle_id }}-{{ !empty($document->bundle) ? $document->bundle->title : '' }}</a>
                                                         @elseif(!empty($document->product_id))
                                                             @if(!$document->is_cashback)
                                                                 <span class="d-block font-weight-bold">{{ trans('update.product_purchased') }}</span>
                                                             @endif
 
                                                             <a href="{{ !empty($document->product) ? $document->product->getUrl() : '' }}"
-                                                               target="_blank" class="font-12">#{{ $document->product_id }}-{{ !empty($document->product) ? $document->product->title : '' }}</a>
+                                                                target="_blank" class="font-12">#{{ $document->product_id }}-{{ !empty($document->product) ? $document->product->title : '' }}</a>
                                                         @elseif(!empty($document->meeting_time_id))
                                                             @if(!$document->is_cashback)
                                                                 <span class="d-block font-weight-bold">{{ trans('admin/main.item_purchased') }}</span>
@@ -195,7 +195,7 @@
                                                 <td class="text-left">
                                                     @if(!empty($document->user))
                                                         <a href="{{ getAdminPanelUrl() }}/users/{{ $document->user_id }}/edit" target="_blank"
-                                                           class="">{{ $document->user->full_name }}</a>
+                                                            class="">{{ $document->user->full_name }}</a>
                                                     @endif
                                                 </td>
 

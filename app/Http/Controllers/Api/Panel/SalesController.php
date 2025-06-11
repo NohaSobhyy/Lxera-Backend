@@ -339,7 +339,7 @@ class SalesController extends Controller
         ], 200);
     }
 
-        public function exportExcel(Request $request)
+    public function exportExcel(Request $request)
     {
         $this->authorize('admin_sales_export');
 

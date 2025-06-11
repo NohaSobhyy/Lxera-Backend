@@ -16,7 +16,10 @@ use App\Http\Controllers\Api\Panel\UsersController;
 use App\Http\Controllers\Api\Admin\ServicesController;
 use App\Http\Controllers\Api\Admin\StudyClassesController;
 use App\Http\Controllers\Api\Admin\CertificatesController;
+use App\Http\Controllers\Api\Admin\DocumentsController;
+use App\Http\Controllers\Api\Admin\OfflinePaymentsController;
 use App\Http\Controllers\Api\Admin\QuizzesController;
+use App\Http\Controllers\Api\Admin\SalesController as AdminSalesController;
 use App\Http\Controllers\Api\Admin\WebinarCertificateController;
 use Illuminate\Support\Facades\Route;
 
@@ -177,6 +180,25 @@ Route::prefix('{url_name}')->group(function () {
             Route::get('/{id}/students', [AssignmentsController::class, 'students']);
             Route::get('/{assignmentId}/history/{historyId}/conversations', [AssignmentsController::class, 'conversations']);
             Route::put('/{id}', [AssignmentsController::class, 'update']);
+        });
+
+
+
+        Route::prefix('financial')->group(function () {
+            // Balances
+            Route::prefix('documents')->group(function () {
+                Route::get('/', [DocumentsController::class, 'index']);
+                Route::post('/', [DocumentsController::class, 'store']);
+            });
+
+            // Sales list
+            Route::prefix('sales')->group(function () {
+                Route::get('/', [AdminSalesController::class, 'index']);
+                Route::get('/export', [AdminSalesController::class, 'exportExcel']);
+                Route::get('/{sale}/toggle-access', [AdminSalesController::class, 'toggleAccess']);
+                Route::post('/{id}/refund', [AdminSalesController::class, 'refund']);
+                Route::get('/{id}/invoice', [AdminSalesController::class, 'invoice']);
+            });
         });
     });
 });
