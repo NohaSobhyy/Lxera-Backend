@@ -31,9 +31,9 @@ class OfflinePaymentsController extends Controller
         $this->authorize('admin_offline_payments_list');
 
         $query = OfflinePayment::query()
-        ->with([
-            'user'
-        ]);
+            ->with([
+                'user'
+            ]);
         // if ($pageType == 'requests') {
         //     $query->where('status', OfflinePayment::$waiting);
         // } else {
@@ -126,13 +126,24 @@ class OfflinePaymentsController extends Controller
         return $query;
     }
 
-    public function reject(Request $request, OfflinePayment $offlinePayment)
+    public function reject($url_name, Request $request, OfflinePayment $offlinePayment)
     {
+        $organization = Organization::where('url_name', $url_name)->first();
+        if (!$organization) {
+            return response()->json(['message' => 'Organization not found'], 404);
+        }
+
         $validator = Validator::make($request->all(), [
             'reason' => 'required'
         ]);
 
         $this->authorize('admin_offline_payments_reject');
+
+        if ($offlinePayment->status == 'approved') {
+            return response()->json(['message' => 'This offline payment has already been approved, so you cannot reject it now.']);
+        } elseif ($offlinePayment->status == 'reject') {
+            return response()->json(['message' => 'This offline payment has already been rejected before.']);
+        }
 
         $bundleTitle = $offlinePayment->order->orderItems->first()->bundle->title;
         if ($offlinePayment->pay_for == 'form_fee') {
@@ -162,7 +173,7 @@ class OfflinePaymentsController extends Controller
 
         $data['body'] = "لقد تم رفض طلبك  " . $purpuse . ' بسبب ' . $request['reason'];
 
-        $message =  $request['reason'] . "<br>";
+        $message =  $request['reason'];
         if (isset($request['message'])) {
             $data['body'] =  $data['body'] . "\n" . $request['message'];
             $message .= $request['message'];
@@ -178,14 +189,28 @@ class OfflinePaymentsController extends Controller
 
         sendNotification('offline_payment_rejected', $notifyOptions, $offlinePayment->user_id);
 
-        return back();
+        return response()->json([
+            'success' => true,
+            'message' => $data['body']
+        ]);
     }
 
-    public function approved(Request $request, $id)
+    public function approved($url_name, Request $request, $id)
     {
+        $organization = Organization::where('url_name', $url_name)->first();
+        if (!$organization) {
+            return response()->json(['message' => 'Organization not found'], 404);
+        }
+
         $this->authorize('admin_offline_payments_approved');
 
         $offlinePayment = OfflinePayment::findOrFail($id);
+
+        if ($offlinePayment->status == 'approved') {
+            return response()->json(['message' => 'This offline payment has already been approved before.']);
+        } elseif ($offlinePayment->status == 'reject') {
+            return response()->json(['message' => 'This offline payment has already been rejected, so you cannot approved it now.']);
+        }
 
         if ($offlinePayment->order_id) {
 
@@ -208,7 +233,7 @@ class OfflinePaymentsController extends Controller
                 $purpuse = 'لدفع دورة ' . ($offlinePayment->order->orderItems->first()->webinar->title);
             } elseif ($offlinePayment->pay_for == 'service') {
                 $purpuse = 'لدفع رسوم خدمة  ' . ($offlinePayment->order->orderItems->first()->service->title);
-                
+
                 $offlinePayment->order->orderItems
                     ->first()
                     ->service->users()
@@ -242,7 +267,10 @@ class OfflinePaymentsController extends Controller
         }
 
         $offlinePayment->update(['status' => OfflinePayment::$approved]);
-        return back();
+        return response()->json([
+            'success' => true,
+            'message' => 'The offline payment is approved successfully'
+        ]);    
     }
 
     public function exportExcel(Request $request)

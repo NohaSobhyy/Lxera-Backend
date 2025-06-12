@@ -17,6 +17,7 @@ use App\Http\Controllers\Api\Admin\ServicesController;
 use App\Http\Controllers\Api\Admin\StudyClassesController;
 use App\Http\Controllers\Api\Admin\CertificatesController;
 use App\Http\Controllers\Api\Admin\DocumentsController;
+use App\Http\Controllers\Api\Admin\InstallmentsController;
 use App\Http\Controllers\Api\Admin\OfflinePaymentsController;
 use App\Http\Controllers\Api\Admin\QuizzesController;
 use App\Http\Controllers\Api\Admin\SalesController as AdminSalesController;
@@ -182,8 +183,6 @@ Route::prefix('{url_name}')->group(function () {
             Route::put('/{id}', [AssignmentsController::class, 'update']);
         });
 
-
-
         Route::prefix('financial')->group(function () {
             // Balances
             Route::prefix('documents')->group(function () {
@@ -198,6 +197,25 @@ Route::prefix('{url_name}')->group(function () {
                 Route::get('/{sale}/toggle-access', [AdminSalesController::class, 'toggleAccess']);
                 Route::post('/{id}/refund', [AdminSalesController::class, 'refund']);
                 Route::get('/{id}/invoice', [AdminSalesController::class, 'invoice']);
+            });
+
+            // Offline Payments
+            Route::prefix('offline_payments')->group(function () {
+                Route::get('/', [OfflinePaymentsController::class, 'index']);
+                Route::get('/excel', [OfflinePaymentsController::class, 'exportExcel']);
+                Route::get('/{offlinePayment}/reject', [OfflinePaymentsController::class, 'reject']);
+                Route::get('/{id}/approved', [OfflinePaymentsController::class, 'approved']);
+            });
+
+            // Installments
+            Route::group(['prefix' => 'installments'], function () {
+                Route::get('/', [InstallmentsController::class, 'index']);
+                Route::post('/', [InstallmentsController::class, 'store']);
+                Route::put('/{id}', [InstallmentsController::class, 'update']);
+                Route::delete('/{id}', [InstallmentsController::class, 'delete']);
+
+                // Purchases
+                Route::get('/purchases', [InstallmentsController::class, 'purchases']);
             });
         });
     });

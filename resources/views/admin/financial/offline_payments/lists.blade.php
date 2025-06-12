@@ -297,7 +297,7 @@
                                                             @break
                                                         @endswitch
                                                     </td>
-                                                     <td class="font-12">
+                                                    <td class="font-12">
                                                     {{ Carbon\Carbon::parse($offlinePayment->created_at)->translatedFormat(handleDateAndTimeFormat('Y M j | H:i')) }}
                                                 </td>
 

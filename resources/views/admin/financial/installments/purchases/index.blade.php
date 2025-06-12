@@ -71,15 +71,15 @@
                                             <td class="text-center">
                                                 @if(!empty($order->webinar_id))
                                                     <a href="{{ !empty($order->webinar) ? $order->webinar->getUrl() : '' }}"
-                                                       target="_blank" class="font-14">#{{ $order->webinar_id }}-{{ !empty($order->webinar) ? $order->webinar->title : '' }}</a>
+                                                        target="_blank" class="font-14">#{{ $order->webinar_id }}-{{ !empty($order->webinar) ? $order->webinar->title : '' }}</a>
                                                     <span class="d-block font-12">{{ trans('update.target_types_courses') }}</span>
                                                 @elseif(!empty($order->bundle_id))
                                                     <a href="{{ !empty($order->bundle) ? $order->bundle->getUrl() : '' }}"
-                                                       target="_blank" class="font-14">#{{ $order->bundle_id }}-{{ !empty($order->bundle) ? $order->bundle->title : '' }}</a>
+                                                        target="_blank" class="font-14">#{{ $order->bundle_id }}-{{ !empty($order->bundle) ? $order->bundle->title : '' }}</a>
                                                     <span class="d-block font-12">{{ trans('update.target_types_bundles') }}</span>
                                                 @elseif(!empty($order->product_id))
                                                     <a href="{{ !empty($order->product) ? $order->product->getUrl() : '' }}"
-                                                       target="_blank" class="font-14">#{{ $order->product_id }}-{{ !empty($order->product) ? $order->product->title : '' }}</a>
+                                                        target="_blank" class="font-14">#{{ $order->product_id }}-{{ !empty($order->product) ? $order->product->title : '' }}</a>
                                                     <span class="d-block font-12">{{ trans('update.target_types_store_products') }}</span>
                                                 @elseif(!empty($order->subscribe_id))
                                                     <span class="font-14">{{ trans('admin/main.purchased_subscribe') }}</span>
@@ -201,7 +201,7 @@
                         </div>
 
                         <div class="card-footer text-center">
-                            {{ $orders->appends(request()->input())->links() }}
+                            {{-- {{ $orders->appends(request()->input())->links() }} --}}
                         </div>
 
                     </div>

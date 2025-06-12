@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Http\Controllers\Admin\traits;
+namespace App\Http\Controllers\Api\Admin\traits;
 
 
 use App\Exports\InstallmentPurchasesExport;
@@ -20,7 +20,7 @@ trait InstallmentPurchasesTrait
             ->orderBy('created_at', 'desc')
             ->with([
                 'selectedInstallment' => function ($query) {
-                    $query->with(['steps']);
+                    $query->with(['steps', 'user', 'installment']);
                     $query->withCount([
                         'steps'
                     ]);
@@ -30,12 +30,31 @@ trait InstallmentPurchasesTrait
 
         $orders = $this->handlePurchasedOrders($orders);
 
+        $orderData = [];
+        foreach ($orders as $order) {
+            $orderData[] = [
+                'user' => $order->user->full_name,
+                'userPhone' => $order->user->mobile,
+                'userEmail' => $order->user->email,
+                'installmentPlan' => $order->selectedInstallment->installment->title,
+                'createdDate' => $order->created_at,
+                'totalAmount' => handlePrice($order->getCompletePrice()),
+                'firstInstallment' => $order->selectedInstallment->upfront,
+                'InstallmentsCount' => $order->selectedInstallment->steps_count,
+                'InstallmentsAmount' => $order->selectedInstallment->steps,
+                'lateInstallments' => $order->overdue_count,
+                'overdueAmount' => handlePrice($order->overdue_amount),
+                'FirstOverdueInst.Date' => $order->upcoming_date,
+                'remainingDays' => $order->days_left,
+                'status' => $order->status
+            ];
+        }
         $data = [
-            'pageTitle' => trans('update.purchases'),
+            'ordersTable' => $orderData,
             'orders' => $orders
         ];
 
-        return view('admin.financial.installments.purchases.index', $data);
+        return response()->json([$data], 200,  [], JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE);
     }
 
     private function handlePurchasedOrders($orders)
@@ -60,7 +79,7 @@ trait InstallmentPurchasesTrait
                 if ($order->selectedInstallment->deadline_type == 'days') {
                     $dueAt = $lastStep->deadline * 86400 + $order->bundle->start_date;
                 } else {
-                    $dueAt =$lastStep->deadline;
+                    $dueAt = $lastStep->deadline;
                 }
 
                 $daysLeft = ($dueAt - time()) / 86400;
@@ -89,7 +108,7 @@ trait InstallmentPurchasesTrait
                 } else {
                     $dueAt = $step->deadline;
                 }
-             
+
                 if ($dueAt < $time) {
                     $payment = InstallmentOrderPayment::query()
                         ->where('installment_order_id', $order->id)
@@ -131,7 +150,6 @@ trait InstallmentPurchasesTrait
 
         return $result;
     }
-
 
     public function purchasesExportExcel(Request $request)
     {
