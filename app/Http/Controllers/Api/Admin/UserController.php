@@ -47,6 +47,8 @@ use App\Mail\SendNotifications;
 use App\Imports\StudentImport;
 use App\Exports\ProgramCodeExport;
 use App\Imports\SendUserMail;
+use App\Models\Api\Organization;
+use Illuminate\Support\Facades\Validator;
 
 class UserController extends Controller
 {
@@ -1072,141 +1074,125 @@ class UserController extends Controller
         ];
     }
 
-    public function update(Request $request, $id)
+    public function update($url_name, Request $request, $id)
     {
+        $organization = Organization::where('url_name', $url_name)->first();
+        if (!$organization) {
+            return response()->json(['message' => 'Organization not found'], 404);
+        }
         $this->authorize('admin_users_edit');
 
         $user = User::findOrFail($id);
+
         $rules = [
-            'full_name' => 'required|min:3|max:128',
-            'role_id' => 'required|exists:roles,id',
-            'email' => (!empty($user->email)) ? 'required|email|unique:users,email,' . $user->id . ',id,deleted_at,NULL' : 'nullable|email|unique:users',
-            'mobile' => (!empty($user->mobile)) ? 'required|unique:users,mobile,' . $user->id . ',id,deleted_at,NULL' : 'nullable|numeric|unique:users',
+            'full_name' => 'sometimes|min:3|max:128',
+            'role_id' => 'sometimes|exists:roles,id',
+            'email' => (!empty($user->email)) ? 'sometimes|email|unique:users,email,' . $user->id . ',id,deleted_at,NULL' : 'nullable|email|unique:users',
+            'mobile' => (!empty($user->mobile)) ? 'sometimes|unique:users,mobile,' . $user->id . ',id,deleted_at,NULL' : 'nullable|numeric|unique:users',
             'password' => 'nullable|string',
             'bio' => 'nullable|string|min:3|max:48',
             'about' => 'nullable|string|min:3',
             'certificate_additional' => 'nullable|string|max:255',
-            'status' => 'required|' . Rule::in(User::$statuses),
-            'ban_start_at' => 'required_if:ban,on',
-            'ban_end_at' => 'required_if:ban,on',
+            'status' => ['sometimes', Rule::in(User::$statuses)],
+            'ban_start_at' => 'sometimes|required_if:ban,1',
+            'ban_end_at' => 'sometimes|required_if:ban,1',
             'en_name' => 'nullable|string|max:255',
         ];
 
         if (!empty($user->student)) {
-            $rules['user_code'] = 'required|unique:users,user_code,' . $user->id;
+            $rules['user_code'] = 'sometimes|unique:users,user_code,' . $user->id;
         }
 
-        $this->validate($request, $rules);
+        $validator = Validator::make($request->all(), $rules);
 
-        $data = $request->all();
+        if ($validator->fails()) {
+            return response()->json([
+                'message' => 'Validation failed',
+                'errors' => $validator->errors(),
+            ], 422);
+        }
 
-        $role = Role::where('id', $data['role_id'])->first();
+        $data = $validator->validated();
+
+        $role = Role::find($data['role_id'] ?? $user->role_id);
+        if (!$role) {
+            return response()->json([
+                'message' => 'Selected role does not exist.'
+            ], 404);
+        }
+
         $userOldRoleId = $user->role_id;
 
-        if (empty($role)) {
-            $toastData = [
-                'title' => trans('public.request_failed'),
-                'msg' => 'Selected role not exist',
-                'status' => 'error',
-            ];
-
-            return back()->with(['toast' => $toastData]);
-        }
-
-        if ($user->role_id != $role->id and $role->name == Role::$teacher) {
+        if ($user->role_id != $role->id && $role->name == Role::$teacher) {
             $becomeInstructor = BecomeInstructor::where('user_id', $user->id)
                 ->where('status', 'pending')
                 ->first();
 
             if (!empty($becomeInstructor)) {
-                $becomeInstructor->update([
-                    'status' => 'accept',
-                ]);
-
-                // Send Notification
+                $becomeInstructor->update(['status' => 'accept']);
                 $becomeInstructor->sendNotificationToUser('accept');
             }
         }
 
-        $user->full_name = !empty($data['full_name']) ? $data['full_name'] : null;
-        $user->role_name = $role->name;
-        $user->role_id = $role->id;
-        $user->user_code =  $data['user_code'] ?? $user->user_code;
-        $user->timezone = $data['timezone'] ?? null;
-        $user->currency = $data['currency'] ?? null;
-        $user->organ_id = !empty($data['organ_id']) ? $data['organ_id'] : null;
-        $user->email = !empty($data['email']) ? $data['email'] : null;
-        $user->mobile = !empty($data['mobile']) ? $data['mobile'] : null;
-        $user->bio = !empty($data['bio']) ? $data['bio'] : null;
-        $user->about = !empty($data['about']) ? $data['about'] : null;
-        $user->status = !empty($data['status']) ? $data['status'] : null;
-        $user->language = !empty($data['language']) ? $data['language'] : null;
+        $user->fill([
+            'full_name' => $data['full_name'] ?? $user->full_name,
+            'role_id' => $role->id,
+            'role_name' => $role->name,
+            'user_code' => $data['user_code'] ?? $user->user_code,
+            'timezone' => $data['timezone'] ?? $user->timezone,
+            'currency' => $data['currency'] ?? $user->currency,
+            'organ_id' => $data['organ_id'] ?? $user->organ_id,
+            'email' => $data['email'] ?? $user->email,
+            'mobile' => $data['mobile'] ?? $user->mobile,
+            'bio' => $data['bio'] ?? $user->bio,
+            'about' => $data['about'] ?? $user->about,
+            'status' => $data['status'] ?? $user->status,
+            'language' => $data['language'] ?? $user->language,
+        ]);
 
-        if ($role->id == 1 && !empty($data['en_name'])) {
-            $user->student->en_name =  $data['en_name'];
+        if ($role->id == 1 && isset($data['en_name']) && !empty($user->student)) {
+            $user->student->en_name = $data['en_name'];
             $user->student->save();
         }
+
         if (!empty($data['password'])) {
             $user->password = User::generatePassword($data['password']);
-            $user->save();
-            $data['title'] = 'تغيير كلمة المرور';
-            $data['body'] = "حياك الله
-                            <br>
-                            نود اخبارك انه تم تغيير كلمة المرور الخاصة بك في منصه خدمات المتدرب
-                            <br>
-                            ويمكنكم الدخول إلى منصة خدمات المتدرب عن طريق الرابط التالي
-                            <a href='https://lms.anasacademy.uk/login' class='btn btn-danger'>اضغط هنا للدخول</a>
-                            <br>
-                            ويمكنك استخدام البيانات الآتيه لتسجيل الدخول
-                            <br>
-                            <span style='font-weight:bold;'>البريد الالكتروني: </span> $user->email
-                            <br>
-                             <span style='font-weight:bold;'>كلمة المرور: </span>" . $data['password'] . "
-                             <br>
-                             <br>
-                            واذا واجهتكم مشكلة في تسجيل الدخول يمكنكم التواصل معنا
-                ";
-
-            $this->sendEmail($user, $data);
-            $data['body'] = "نود اعلامك انه تم تغيير كلمة المرور الخاصة بك";
-            $this->sendNotificationToUser($user, $data);
+            $this->sendEmail($user, [
+                'title' => 'تغيير كلمة المرور',
+                'body' => "تم تغيير كلمة المرور الخاصة بك، البريد: $user->email، كلمة المرور: {$data['password']}"
+            ]);
+            $this->sendNotificationToUser($user, ['body' => 'تم تغيير كلمة المرور الخاصة بك']);
         }
 
-        if (!empty($data['ban']) and $data['ban'] == '1') {
-            $ban_start_at = strtotime($data['ban_start_at']);
-            $ban_end_at = strtotime($data['ban_end_at']);
-
+        if (!empty($data['ban']) && $data['ban'] == '1') {
             $user->ban = true;
-            $user->ban_start_at = $ban_start_at;
-            $user->ban_end_at = $ban_end_at;
+            $user->ban_start_at = strtotime($data['ban_start_at']);
+            $user->ban_end_at = strtotime($data['ban_end_at']);
         } else {
             $user->ban = false;
             $user->ban_start_at = null;
             $user->ban_end_at = null;
         }
 
-        $user->verified = (!empty($data['verified']) and $data['verified'] == '1');
-
-        $user->affiliate = (!empty($data['affiliate']) and $data['affiliate'] == '1');
-
-        $user->can_create_store = (!empty($data['can_create_store']) and $data['can_create_store'] == '1');
-
-        $user->access_content = (!empty($data['access_content']) and $data['access_content'] == '1');
+        $user->verified = isset($data['verified']) && $data['verified'] == '1';
+        $user->affiliate = isset($data['affiliate']) && $data['affiliate'] == '1';
+        $user->can_create_store = isset($data['can_create_store']) && $data['can_create_store'] == '1';
+        $user->access_content = isset($data['access_content']) && $data['access_content'] == '1';
 
         $user->save();
 
-        // save certificate_additional in user metas table
-        $this->handleUserCertificateAdditional($user->id, $data['certificate_additional']);
+        $this->handleUserCertificateAdditional($user->id, $data['certificate_additional'] ?? '');
 
         if ($userOldRoleId != $role->id) {
-            $notifyOptions = [
-                '[u.role]' => $role->caption,
-            ];
-            sendNotification('user_role_change', $notifyOptions, $user->id);
+            sendNotification('user_role_change', ['[u.role]' => $role->caption], $user->id);
         }
 
-        return redirect()->back()->with('msg', 'تم تعديل بيانات المستخدم بنجاح');
+        return response()->json([
+            'message' => 'User updated successfully',
+            'user' => $user
+        ]);
     }
+
 
     public function handleUserCertificateAdditional($userId, $value)
     {

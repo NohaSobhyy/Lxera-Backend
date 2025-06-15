@@ -2,10 +2,10 @@
 
 namespace App\Http\Controllers\Api\Admin;
 
-use App\Http\Controllers\Admin\traits\InstallmentOrdersTrait;
-use App\Http\Controllers\Admin\traits\InstallmentOverdueTrait;
+use App\Http\Controllers\Api\Admin\traits\InstallmentOrdersTrait;
+use App\Http\Controllers\Api\Admin\traits\InstallmentOverdueTrait;
 use App\Http\Controllers\Api\Admin\traits\InstallmentPurchasesTrait;
-use App\Http\Controllers\Admin\traits\InstallmentSettingsTrait;
+use App\Http\Controllers\Api\Admin\traits\InstallmentSettingsTrait;
 use App\Http\Controllers\Admin\traits\InstallmentVerificationRequestsTrait;
 use App\Http\Controllers\Controller;
 use App\Models\Api\Organization;
@@ -354,7 +354,6 @@ class InstallmentsController extends Controller
             ], 500);
         }
     }
-
 
     public function delete($url_name, $id)
     {

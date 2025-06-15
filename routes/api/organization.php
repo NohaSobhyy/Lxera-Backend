@@ -16,11 +16,13 @@ use App\Http\Controllers\Api\Panel\UsersController;
 use App\Http\Controllers\Api\Admin\ServicesController;
 use App\Http\Controllers\Api\Admin\StudyClassesController;
 use App\Http\Controllers\Api\Admin\CertificatesController;
+use App\Http\Controllers\Api\Admin\DiscountController;
 use App\Http\Controllers\Api\Admin\DocumentsController;
 use App\Http\Controllers\Api\Admin\InstallmentsController;
 use App\Http\Controllers\Api\Admin\OfflinePaymentsController;
 use App\Http\Controllers\Api\Admin\QuizzesController;
 use App\Http\Controllers\Api\Admin\SalesController as AdminSalesController;
+use App\Http\Controllers\Api\Admin\SupportsController;
 use App\Http\Controllers\Api\Admin\WebinarCertificateController;
 use Illuminate\Support\Facades\Route;
 
@@ -216,6 +218,38 @@ Route::prefix('{url_name}')->group(function () {
 
                 // Purchases
                 Route::get('/purchases', [InstallmentsController::class, 'purchases']);
+                Route::get('/purchases/export', [InstallmentsController::class, 'purchasesExportExcel']);
+                Route::get('/orders/{id}/details', [InstallmentsController::class, 'details']);
+                Route::put('users/{id}', [UserController::class, 'update']);
+                Route::post('/support', [SupportsController::class, 'store']);
+                Route::get('/cancel/{id}', [InstallmentsController::class, 'cancel']);
+
+                // Overdue
+                Route::group(['prefix' => 'overdue'], function () {
+                    Route::get('/', [InstallmentsController::class, 'overdueLists']);
+                    Route::get('/export', [InstallmentsController::class, 'overdueListsExportExcel']);
+                });
+
+                // Overdue History
+                Route::group(['prefix' => 'overdue_history'], function () {
+                    Route::get('/', [InstallmentsController::class, 'overdueHistories']);
+                    Route::get('/export', [InstallmentsController::class, 'overdueHistoriesExportExcel']);
+                });
+
+                // Setting
+                Route::group(['prefix' => 'settings'], function () {
+                    Route::get('/', [InstallmentsController::class, 'settings']);
+                    Route::post('/', [InstallmentsController::class, 'storeSettings']);
+                });
+            });
+
+            // Discount Code
+            Route::group(['prefix' => 'discounts'], function () {
+                Route::get('/', [DiscountController::class, 'index']);
+                Route::get('/{discount}/students', [DiscountController::class, 'students']);
+                Route::post('/', [DiscountController::class, 'store']);
+                Route::put('/{id}', [DiscountController::class, 'update']);
+                Route::delete('/{id}', [DiscountController::class, 'destroy']);
             });
         });
     });
