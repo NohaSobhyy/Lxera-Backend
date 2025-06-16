@@ -167,19 +167,18 @@ class UserController extends Controller
         $staffsRoles = Role::where('is_admin', true)->get();
         $staffsRoleIds = $staffsRoles->pluck('id')->toArray();
 
-        $query = User::whereIn('role_id', $staffsRoleIds);
+        $query = User::whereIn('role_id', $staffsRoleIds)->with(['role']);
         $query = $this->filters($query, $request);
 
         $users = $query->orderBy('created_at', 'desc')
-            ->paginate(20);
+            ->get();
 
         $data = [
-            'pageTitle' => trans('admin/main.staff_list_title'),
             'users' => $users,
             'staffsRoles' => $staffsRoles,
         ];
 
-        return view('admin.users.staffs', $data);
+        return response()->json($data);
     }
 
     public function organizations(Request $request, $is_export_excel = false)
@@ -329,7 +328,7 @@ class UserController extends Controller
             $users = $query->orderBy('created_at', 'desc')->get();
         } else {
             $users = $query->orderBy('created_at', 'desc')
-                ->paginate(20);
+                ->get();
         }
 
         $users = $this->addUsersExtraInfo($users);
@@ -349,7 +348,7 @@ class UserController extends Controller
             'organizations' => $organizations,
         ];
 
-        return view('admin.users.instructors', $data);
+        return response()->json($data);
     }
 
     public function addUsersExtraInfo($users)
@@ -667,117 +666,79 @@ class UserController extends Controller
             'status' => 'required',
         ]);
 
-        if (!empty($data['role_id'])) {
-            $role = Role::find($data['role_id']);
+        $role = Role::find($data['role_id']);
 
-            if (!empty($role)) {
-                $referralSettings = getReferralSettings();
-                $usersAffiliateStatus = (!empty($referralSettings) and !empty($referralSettings['users_affiliate_status']));
-                $lastCode = Code::latest()->first();
-                if ($role->name == 'user' && !empty($lastCode)) {
-                    if (empty($lastCode->lst_sd_code)) {
-                        $lastCode->lst_sd_code = $lastCode->student_code;
-                    }
-                    $lastCodeAsInt = intval(substr($lastCode->lst_sd_code, 2));
-                    do {
-                        $nextCodeAsInt = $lastCodeAsInt + 1;
-                        $nextCode = 'SD' . str_pad($nextCodeAsInt, 5, '0', STR_PAD_LEFT);
+        if (!$role) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Role not found!',
+            ], 404);
+        }
 
-                        $codeExists = User::where('user_code', $nextCode)->exists();
+        $referralSettings = getReferralSettings();
+        $usersAffiliateStatus = (!empty($referralSettings) and !empty($referralSettings['users_affiliate_status']));
 
-                        if ($codeExists) {
-                            $lastCodeAsInt = $nextCodeAsInt;
-                        } else {
-                            break;
-                        }
-                    } while (true);
-                    $user = User::create([
-                        'full_name' => $data['full_name'],
-                        'role_name' => $role->name,
-                        'role_id' => $data['role_id'],
-                        'user_code' => $nextCode,
-                        $username => $data[$username],
-                        'password' => User::generatePassword($data['password']),
-                        'status' => $data['status'],
-                        'affiliate' => $usersAffiliateStatus,
-                        'verified' => true,
-                        'created_at' => time(),
-                    ]);
-                    $lastCode->update(['lst_sd_code' => $nextCode]);
-                } elseif ($role->name == 'teacher' && !empty($lastCode)) {
-                    if (empty($lastCode->lst_tr_code)) {
-                        $lastCode->lst_tr_code = $lastCode->instructor_code;
-                    }
-                    $lastCodeAsInt = intval(substr($lastCode->lst_tr_code, 2));
-                    do {
-                        $nextCodeAsInt = $lastCodeAsInt + 1;
-                        $nextCode = 'TR' . str_pad($nextCodeAsInt, 5, '0', STR_PAD_LEFT);
+        $lastCode = Code::latest()->first();
+        $userCode = null;
 
-                        $codeExists = User::where('user_code', $nextCode)->exists();
-
-                        if ($codeExists) {
-                            $lastCodeAsInt = $nextCodeAsInt;
-                        } else {
-                            break;
-                        }
-                    } while (true);
-                    $user = User::create([
-                        'full_name' => $data['full_name'],
-                        'role_name' => $role->name,
-                        'role_id' => $data['role_id'],
-                        'user_code' => $nextCode,
-                        $username => $data[$username],
-                        'password' => User::generatePassword($data['password']),
-                        'status' => $data['status'],
-                        'affiliate' => $usersAffiliateStatus,
-                        'verified' => true,
-                        'created_at' => time(),
-                    ]);
-                    $lastCode->update(['lst_tr_code' => $nextCode]);
-                } else {
-
-                    $user = User::create([
-                        'full_name' => $data['full_name'],
-                        'role_name' => $role->name,
-                        'role_id' => $data['role_id'],
-                        $username => $data[$username],
-                        'password' => User::generatePassword($data['password']),
-                        'status' => $data['status'],
-                        'affiliate' => $usersAffiliateStatus,
-                        'verified' => true,
-                        'created_at' => time(),
-                    ]);
+        if (!empty($lastCode)) {
+            if ($role->name == 'user') {
+                if (empty($lastCode->lst_sd_code)) {
+                    $lastCode->lst_sd_code = $lastCode->student_code;
                 }
-
-                if (!empty($data['group_id'])) {
-                    $group = Group::find($data['group_id']);
-
-                    if (!empty($group)) {
-                        GroupUser::create([
-                            'group_id' => $group->id,
-                            'user_id' => $user->id,
-                            'created_at' => time(),
-                        ]);
-
-                        $notifyOptions = [
-                            '[u.g.title]' => $group->name,
-                        ];
-                        sendNotification('add_to_user_group', $notifyOptions, $user->id);
-                    }
+                $lastCodeAsInt = intval(substr($lastCode->lst_sd_code, 2));
+                do {
+                    $nextCodeAsInt = $lastCodeAsInt + 1;
+                    $userCode = 'SD' . str_pad($nextCodeAsInt, 5, '0', STR_PAD_LEFT);
+                    $lastCodeAsInt = $nextCodeAsInt;
+                } while (User::where('user_code', $userCode)->exists());
+                $lastCode->update(['lst_sd_code' => $userCode]);
+            } elseif ($role->name == 'teacher') {
+                if (empty($lastCode->lst_tr_code)) {
+                    $lastCode->lst_tr_code = $lastCode->instructor_code;
                 }
-
-                return redirect(getAdminPanelUrl() . '/users/' . $user->id . '/edit');
+                $lastCodeAsInt = intval(substr($lastCode->lst_tr_code, 2));
+                do {
+                    $nextCodeAsInt = $lastCodeAsInt + 1;
+                    $userCode = 'TR' . str_pad($nextCodeAsInt, 5, '0', STR_PAD_LEFT);
+                    $lastCodeAsInt = $nextCodeAsInt;
+                } while (User::where('user_code', $userCode)->exists());
+                $lastCode->update(['lst_tr_code' => $userCode]);
             }
         }
 
-        $toastData = [
-            'title' => '',
-            'msg' => 'Role not find!',
-            'status' => 'error',
-        ];
+        $user = User::create([
+            'full_name' => $data['full_name'],
+            'role_name' => $role->name,
+            'role_id' => $data['role_id'],
+            $username => $data[$username],
+            'user_code' => $userCode,
+            'password' => User::generatePassword($data['password']),
+            'status' => $data['status'],
+            'affiliate' => $usersAffiliateStatus,
+            'verified' => true,
+            'created_at' => time(),
+        ]);
 
-        return back()->with(['toast' => $toastData]);
+        if (!empty($data['group_id'])) {
+            $group = Group::find($data['group_id']);
+            if ($group) {
+                GroupUser::create([
+                    'group_id' => $group->id,
+                    'user_id' => $user->id,
+                    'created_at' => time(),
+                ]);
+                sendNotification('add_to_user_group', ['[u.g.title]' => $group->name], $user->id);
+            }
+        }
+
+        return response()->json([
+            'status' => 'success',
+            'message' => 'User created successfully',
+            'data' => $user
+        ], 201);
     }
+
 
     public function storeexcel(Request $request)
     {
@@ -1193,7 +1154,6 @@ class UserController extends Controller
         ]);
     }
 
-
     public function handleUserCertificateAdditional($userId, $value)
     {
         $name = 'certificate_additional';
@@ -1353,8 +1313,13 @@ class UserController extends Controller
         return redirect()->back()->with(['toast' => $toastData]);
     }
 
-    public function destroy(Request $request, $id)
+    public function destroy($url_name, $id)
     {
+        $organization = Organization::where('url_name', $url_name)->first();
+        if (!$organization) {
+            return response()->json(['message' => 'Organization not found'], 404);
+        }
+
         $this->authorize('admin_users_delete');
 
         $user = User::find($id);
@@ -1363,7 +1328,10 @@ class UserController extends Controller
             $user->delete();
         }
 
-        return redirect()->back();
+        return response()->json([
+            'status' => 'success',
+            'msg' => 'User Deleted Successfully'
+        ]);
     }
 
     public function acceptRequestToInstructor($id)

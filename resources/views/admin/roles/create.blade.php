@@ -40,8 +40,8 @@
                                         <div class="form-group @error('name') is-invalid @enderror">
                                                 <label>{{ trans('admin/main.name') }}</label>
                                             <input type="text" name="name" class="form-control"
-                                                   value="{{ !empty($role) ? $role->name : old('name') }}"
-                                                   placeholder=""/>
+                                                value="{{ !empty($role) ? $role->name : old('name') }}"
+                                                placeholder=""/>
                                         </div>
 
                                         @error('name')
@@ -53,7 +53,7 @@
                                         <div class="form-group @error('caption') is-invalid @enderror">
                                             <label>{{ trans('admin/main.caption') }}</label>
                                             <input type="text" name="caption" class="form-control" value="{{ !empty($role) ? $role->caption : old('caption') }}"
-                                                   placeholder="{{ trans('admin/main.create_field_name_placeholder') }}"/>
+                                                placeholder="{{ trans('admin/main.create_field_name_placeholder') }}"/>
 
                                             @error('caption')
                                             <div class="invalid-feedback">
@@ -88,7 +88,7 @@
                                                 <div class="card card-primary section-box">
                                                     <div class="card-header">
                                                         <input type="checkbox" name="permissions[]" id="permissions_{{ $section->id }}" value="{{ $section->id }}"
-                                                               {{isset($permissions[$section->id]) ? 'checked' : ''}} class="form-check-input mt-0 section-parent">
+                                                            {{isset($permissions[$section->id]) ? 'checked' : ''}} class="form-check-input mt-0 section-parent">
                                                         <label class="form-check-label font-16 font-weight-bold cursor-pointer" for="permissions_{{ $section->id }}">
                                                             {{ $section->caption }}
                                                         </label>
@@ -100,7 +100,7 @@
                                                             @foreach($section->children as $key => $child)
                                                                 <div class="form-check mt-1">
                                                                     <input type="checkbox" name="permissions[]" id="permissions_{{ $child->id }}" value="{{ $child->id }}"
-                                                                           {{ isset($permissions[$child->id]) ? 'checked' : '' }} class="form-check-input section-child">
+                                                                        {{ isset($permissions[$child->id]) ? 'checked' : '' }} class="form-check-input section-child">
                                                                     <label class="form-check-label cursor-pointer mt-0" for="permissions_{{ $child->id }}">
                                                                         {{ $child->caption }}
                                                                     </label>

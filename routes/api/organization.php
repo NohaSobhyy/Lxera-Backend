@@ -21,8 +21,10 @@ use App\Http\Controllers\Api\Admin\DocumentsController;
 use App\Http\Controllers\Api\Admin\InstallmentsController;
 use App\Http\Controllers\Api\Admin\OfflinePaymentsController;
 use App\Http\Controllers\Api\Admin\QuizzesController;
+use App\Http\Controllers\Api\Admin\RoleController;
 use App\Http\Controllers\Api\Admin\SalesController as AdminSalesController;
 use App\Http\Controllers\Api\Admin\SupportsController;
+use App\Http\Controllers\Api\Admin\UsersNotAccessToContentController;
 use App\Http\Controllers\Api\Admin\WebinarCertificateController;
 use Illuminate\Support\Facades\Route;
 
@@ -250,6 +252,42 @@ Route::prefix('{url_name}')->group(function () {
                 Route::post('/', [DiscountController::class, 'store']);
                 Route::put('/{id}', [DiscountController::class, 'update']);
                 Route::delete('/{id}', [DiscountController::class, 'destroy']);
+            });
+        });
+
+        // Staffs
+        Route::group(['prefix' => 'staffs'], function () {
+            Route::get('/', [UserController::class, 'staffs']);
+        });
+
+        // Students
+        Route::prefix('students')->group(function () {
+            Route::get('/', [UsersController::class, 'students']);
+        });
+
+        // Instructors
+        Route::group(['prefix' => 'instructors'], function () {
+            Route::get('/', [UserController::class, 'instructors']);
+            Route::get('/excel', 'UserController@exportExcelInstructors');
+        });
+
+        Route::group(['prefix' => 'users'], function () {
+            Route::post('/', [UserController::class, 'store']);
+            Route::delete('/{id}', [UserController::class, 'destroy']);
+
+            // Users Who do Not Have Access To Content
+            Route::group(['prefix' => 'not-access-to-content'], function () {
+                Route::get('/', [UsersNotAccessToContentController::class, 'index']);
+                Route::post('/', [UsersNotAccessToContentController::class, 'store']);
+                Route::get('/{id}/active', [UsersNotAccessToContentController::class, 'active']);
+            });
+
+            // Roles
+            Route::group(['prefix' => 'roles'], function () {
+                Route::get('/', [RoleController::class, 'index']);
+                Route::post('/', [RoleController::class, 'store']);
+                Route::put('/{id}', [RoleController::class, 'update']);
+                Route::delete('/{id}', [RoleController::class, 'destroy']);
             });
         });
     });
