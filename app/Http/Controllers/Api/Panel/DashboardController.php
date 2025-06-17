@@ -30,11 +30,7 @@ class DashboardController extends Controller
         if (!$organization) {
             return response()->json(['error' => 'Organization not found'], 404);
         }
-        $user = User::where('organ_id', $organization->id)->first();
-        $admin = auth()->user();
-        if (!$user || !$admin->isAdmin()) {
-            return response()->json(['error' => 'No user found for this organization'], 404);
-        }
+
         $bundlesCount = Bundle::count();
         $activeWebinarsCount = Webinar::where('status', 'active')->count();
         $webinarsCount = Webinar::count();
@@ -45,14 +41,15 @@ class DashboardController extends Controller
             'status' => 'success',
             'message' => 'Portal statistics retrieved successfully',
             'data' => [
-                'total_employees' => $employeesCount ?? 0,
-                'total_bundles' => $bundlesCount ?? 0,
-                'total_active_webinars' => $activeWebinarsCount ?? 0,
-                'total_webinars' => $webinarsCount ?? 0,
-                'total_certificates' => $certificatesCount ?? 0,
-                // 'completion_rate_bundles' => 0,
+                'total_employees' => $employeesCount,
+                'total_bundles' => $bundlesCount,
+                'total_active_webinars' => $activeWebinarsCount,
+                'total_webinars' => $webinarsCount,
+                'total_certificates' => $certificatesCount,
             ]
         ], 200);
+
+
 
 
         //     $nextBadge = $user->getBadges(true, true);

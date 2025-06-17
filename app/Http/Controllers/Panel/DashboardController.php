@@ -4,7 +4,6 @@ namespace App\Http\Controllers\Panel;
 
 use App\Http\Controllers\Controller;
 use App\Mixins\RegistrationPackage\UserPackage;
-use App\Models\Api\Organization;
 use App\Models\Comment;
 use App\Models\Gift;
 use App\Models\Meeting;
@@ -12,25 +11,14 @@ use App\Models\ReserveMeeting;
 use App\Models\Sale;
 use App\Models\Support;
 use App\Models\Webinar;
-use App\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 
 class DashboardController extends Controller
 {
-    public function dashboard(Request $request, $url_name)
-
+    public function dashboard()
     {
-        $organization = Organization::where('url_name', $url_name)->first();
-
-        if (!$organization) {
-            return response()->json(['error' => 'Organization not found'], 404);
-        }
-        $user = User::where('organ_id', $organization->id)->first();
-
-        if (!$user || !$user->isAdmin() ) {
-            return response()->json(['error' => 'No user found for this organization'], 404);
-        }
+        $user = auth()->user();
 
         $nextBadge = $user->getBadges(true, true);
 

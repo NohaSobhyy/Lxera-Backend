@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Panel;
 
+use App\BundleStudent;
 use App\Http\Controllers\Controller;
 use App\Mixins\Installment\InstallmentPlans;
 use App\Models\BridgingRequest;
@@ -15,12 +16,14 @@ use App\Models\BundleDelay;
 use App\Models\BundleTransform;
 use App\Models\Category;
 use App\Models\CertificateService;
+use App\Models\ExportCertificate;
 use App\Models\InstallmentOrder;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Role;
 use App\Models\Sale;
 use App\Models\ServiceUser;
+use App\Student;
 use App\User;
 use Illuminate\Support\Facades\Validator;
 use stdClass;
@@ -349,6 +352,7 @@ class ServiceController extends Controller
         if ($service->price > 0) {
 
             $bundleRequest = [
+
                 'from_bundle_id' => $request->from_bundle_id,
                 'to_bundle_id' => $to_bundle->id,
                 'type' => $type,
@@ -581,6 +585,129 @@ class ServiceController extends Controller
         return view('web.default.panel.services.includes.certificate', compact('service'));
     }
 
+ public function ExportCertificateRequest(Service $service, $type = null)
+{
+    $user = auth()->user();
+    $student = $user->student;
+
+    // Validate bundle type if provided
+    if ($type && !in_array($type, ['specialized_diploma', 'dual_diploma', 'master'])) {
+        abort(404);
+    }
+
+    // Initialize variables with default values
+    $bundleStudent = collect();
+    $price = $service->price;
+    $bundleType = $type ?: $service->slug;
+
+    // Only try to get bundle student if student exists
+    if ($student) {
+        $bundleStudent = BundleStudent::where('student_id', $student->id)->get();
+    }
+
+    // Check if required user data exists
+    $missingFields = [];
+    if (!$student || !$student->ar_name) $missingFields[] = 'الاسم باللغة العربية';
+    if (!$student || !$student->phone) $missingFields[] = 'رقم الهاتف';
+    if (!$student || !$student->email) $missingFields[] = 'البريد الإلكتروني';
+
+    if (!empty($missingFields)) {
+        $message = 'بعض البيانات المطلوبة غير موجودة في ملفك الشخصي: ' . implode('، ', $missingFields) .
+            '. يمكنك إضافة هذه البيانات الآن.';
+
+        return view('web.default.panel.services.includes.ExportCertificate', [
+            'service' => $service,
+            'student' => $student,
+            'bundleType' => $bundleType,
+            'price' => $price,
+            'bundleStudent' => $bundleStudent,
+        ])->with('warning', $message);
+    }
+
+    return view('web.default.panel.services.includes.ExportCertificate', [
+        'service' => $service,
+        'student' => $student,
+        'bundleType' => $bundleType,
+        'price' => $price,
+        'bundleStudent' => $bundleStudent,
+    ]);
+}
+    public function storeExportCertificateService(Request $request, Service $service)
+    {
+
+        $user = auth()->user();
+        //dd($request->bundle_type );
+        // Validate only the required fields for submission
+        $validatedData = $request->validate([
+            'ar_name' => 'required|string|max:255',
+            'en_name' => 'nullable|string|max:255',
+            // 'student_code' => 'required|string|max:255',
+            'phone' => 'required|string|max:20',
+            'email' => 'required|email|max:255',
+            'bundle_type' => 'required|max:255',
+            'bundle_id' => 'required|exists:bundles,id',
+
+        ]);
+        // dd( $validatedData );
+        $bundle = Bundle::find($validatedData['bundle_id']);
+    $bundleTitle = $bundle ? $bundle->title : 'غير محدد';
+        $student = Student::where('user_id', $user->id)->first();
+        $type = match ($validatedData['bundle_type']) {
+            'master' => 'الماجستير',
+            'dual_diploma' => 'الدبلوم المزدوج',
+            'specialized_diploma' => 'الدبلوم المتخصص',
+        };
+
+     $content = "تم إضافة خدمة استخراج شهادة للعميل:\n" .
+        "الاسم باللغة العربية: " . $validatedData['ar_name'] . "\n" .
+        "الاسم باللغة الانجليزيه: " . ($validatedData['en_name'] ?? $student->en_name ?? '') . "\n" .
+        "الهاتف: " . $validatedData['phone'] . "\n" .
+        "البريد الإلكتروني: " . $validatedData['email'] . "\n" .
+        "البرنامج المسجل به: " . $bundleTitle . "\n" .
+        "نوع البرنامج: " . $type;
+
+        if ($service->price > 0) {
+            Cookie::queue('service_content', json_encode($content));
+            Cookie::queue('export_certificate_service_content', json_encode($validatedData));
+            $order = $this->createOrder($service);
+            return redirect('/payment/' . $order->id);
+        }
+
+        $serviceRequest = ServiceUser::create([
+            'service_id' => $service->id,
+            'user_id' => $user->id,
+            'content' => $content
+        ]);
+        ExportCertificate::create([
+            'ar_name' => $validatedData['ar_name'],
+            'en_name' => $validatedData['en_name'] ?? ($student->en_name ?? null),
+            'phone' => $validatedData['phone'],
+            'email' => $validatedData['email'],
+            'student_code' => $user->user_code ?? null,
+            'user_id' => $user->id,
+            'bundle_id' => $validatedData['bundle_id'] ?? null,
+            'bundle_type' => $validatedData['bundle_type'] ?? null,
+            'service_request_id' => $serviceRequest->id,
+            'status' => 'pending',
+        ]);
+
+        $notifyOptions = [
+            '[u.name]' => $user?->full_name,
+            '[u.code]' => $user?->user_code,
+            '[s.title]' => $service?->title,
+        ];
+
+        // Notify admin users
+        $adminUsers = User::where('status', 'active')
+            ->whereIn('role_id', Role::$admissionRoles)
+            ->get();
+
+        foreach ($adminUsers as $adminUser) {
+            sendNotification('user_service_request', $notifyOptions, $adminUser->id);
+        }
+
+        return redirect('/panel/services/requests')->with("success", "تم إضافة طلب شهادة التصدير بنجاح");
+    }
 
     public function storeCertificateService(Request $request, Service $service)
     {

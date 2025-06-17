@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Admin\AgoraHistoryController;
+use App\Http\Controllers\Api\Admin\GroupController;
 use App\Http\Controllers\Api\Admin\AssignmentsController;
 use App\Http\Controllers\Api\Admin\BundleController;
 use App\Http\Controllers\Api\Admin\WebinarStatisticController;
@@ -288,6 +289,15 @@ Route::prefix('{url_name}')->group(function () {
                 Route::post('/', [RoleController::class, 'store']);
                 Route::put('/{id}', [RoleController::class, 'update']);
                 Route::delete('/{id}', [RoleController::class, 'destroy']);
+            });
+
+            // Groups
+            Route::group(['prefix' => 'groups'], function () {
+                Route::get('/', [GroupController::class, 'index']);
+                Route::post('/', [GroupController::class, 'store']);
+                Route::put('/{id}', [GroupController::class, 'update']);
+                Route::delete('/{id}', [GroupController::class, 'destroy']);
+                Route::post('/{id}/groupRegistrationPackage', [GroupController::class, 'groupRegistrationPackage']);
             });
         });
     });
