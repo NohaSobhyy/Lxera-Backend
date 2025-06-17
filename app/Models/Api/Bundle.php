@@ -2,6 +2,7 @@
 
 namespace App\Models\Api;
 
+use App\BundleStudent;
 use App\Models\Api\Traits\CheckForSaleTrait;
 use App\Models\Favorite;
 use App\Models\Bundle as Model;
@@ -27,10 +28,14 @@ class Bundle extends Model
 
     public function webinars()
     {
-        //  return $this->hasManyThrough('App\Models\Webinar', 'App\Models\BundleWebinar', 'bundle_id', 'id');
+        return $this->hasManyThrough('App\Models\Webinar', 'App\Models\BundleWebinar', 'bundle_id', 'id');
     }
     public function teacher()
     {
         return $this->belongsTo('App\Models\Api\User', 'teacher_id', 'id');
+    }
+    public function bundleStudents()
+    {
+        return $this->hasMany(BundleStudent::class);
     }
 }

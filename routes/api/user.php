@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Api\Instructor\EmployeeProgressController;
 use App\Http\Controllers\Api\Panel\DashboardController;
 use Illuminate\Support\Facades\Route;
 use App\Models\InstallmentOrder;
@@ -8,6 +9,8 @@ Route::prefix('{url_name}')->group(function () {
     Route::middleware(['auth:api'])->group(function () {
 
         Route::get('/', [DashboardController::class, 'dashboard']);
+        Route::get('/employee_progress',[EmployeeProgressController::class,'index']);
+
         Route::group(['prefix' => '/comments'], function () {
             Route::get('/', ['uses' => 'CommentsController@list']);
             Route::post('/', ['uses' => 'CommentsController@store', 'middleware' => 'api.request.type']);
