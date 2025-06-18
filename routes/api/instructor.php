@@ -1,11 +1,20 @@
 <?php
 
 use App\Http\Controllers\Api\Instructor\DashboardController;
+use App\Http\Controllers\Api\Instructor\WebinarsController;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware(['auth:api'])->group(function () {
     Route::prefix('{url_name}')->group(function () {
-        Route::get('/', [DashboardController::class, 'dashboard']);
+
+        // Dashboard
+        Route::get('/', [DashboardController::class, 'dashboard'])->middleware('can:show_panel');
+
+        // Webinars
+        Route::group(['prefix' => 'webinars', 'middleware' => 'can:student_showClasses'], function () {
+            Route::get('/', [WebinarsController::class, 'index']);
+        });
+
 
         /***** bundles *****/
         Route::get('bundles/{bundle}/export', ['uses' => 'BundleController@export'])->middleware('api.level-access:teacher');
@@ -13,9 +22,7 @@ Route::middleware(['auth:api'])->group(function () {
         Route::apiResource('bundles.webinars', BundleWebinarController::class)->middleware('api.level-access:teacher')->only(['index']);
 
 
-        Route::group(['prefix' => 'webinar'], function () {
-            Route::post('/', ['uses' => 'WebinarsController@storeAll']);
-        });
+
 
         Route::group(['prefix' => 'quizzes'], function () {
             Route::get('/list', ['uses' => 'QuizzesController@results']);

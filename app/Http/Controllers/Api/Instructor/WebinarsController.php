@@ -45,7 +45,7 @@ class WebinarsController extends Controller
         $data = $this->makeMyClassAndInvitationsData($query, $user, $request);
         $data['pageTitle'] = trans('webinars.webinars_list_page_title');
 
-        return view(getTemplate() . '.panel.webinar.index', $data);
+        return response()->json($data);
     }
 
 
@@ -173,7 +173,7 @@ class WebinarsController extends Controller
 
         $webinarsCount = $query->count();
 
-        $webinars = $query->paginate(10);
+        $webinars = $query->get();
 
         $webinarSales = Sale::where('seller_id', $user->id)
             ->where('type', 'webinar')

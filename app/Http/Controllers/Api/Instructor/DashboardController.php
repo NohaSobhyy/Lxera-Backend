@@ -23,125 +23,101 @@ use Illuminate\Support\Carbon;
 
 class DashboardController extends Controller
 {
-    public function dashboard(Request $request, $url_name)
+    public function dashboard()
     {
-        $organization = Organization::where('url_name', $url_name)->first();
+        $user = auth()->user();
 
-        if (!$organization) {
-            return response()->json(['error' => 'Organization not found'], 404);
+        $nextBadge = $user->getBadges(true, true);
+
+        $data = [
+            'pageTitle' => trans('panel.dashboard'),
+            'nextBadge' => $nextBadge
+        ];
+
+        if (!$user->isUser()) {
+            $meetingIds = Meeting::where('creator_id', $user->id)->pluck('id')->toArray();
+            $pendingAppointments = ReserveMeeting::whereIn('meeting_id', $meetingIds)
+                ->whereHas('sale')
+                ->where('status', ReserveMeeting::$pending)
+                ->count();
+
+            $userWebinarsIds = $user->webinars->pluck('id')->toArray();
+            $supports = Support::whereIn('webinar_id', $userWebinarsIds)->where('status', 'open')->get();
+
+            $comments = Comment::whereIn('webinar_id', $userWebinarsIds)
+                ->where('status', 'active')
+                ->whereNull('viewed_at')
+                ->get();
+
+            $time = time();
+            $firstDayMonth = strtotime(date('Y-m-01', $time)); // First day of the month.
+            $lastDayMonth = strtotime(date('Y-m-t', $time)); // Last day of the month.
+
+            $monthlySales = Sale::where('seller_id', $user->id)
+                ->whereNull('refund_at')
+                ->whereBetween('created_at', [$firstDayMonth, $lastDayMonth])
+                ->get();
+
+            $data['pendingAppointments'] = $pendingAppointments;
+            $data['supportsCount'] = count($supports);
+            $data['commentsCount'] = count($comments);
+            $data['monthlySalesCount'] = count($monthlySales) ? $monthlySales->sum('total_amount') : 0;
+            $data['monthlyChart'] = $this->getMonthlySalesOrPurchase($user);
+        } else {
+            $webinarsIds = $user->getPurchasedCoursesIds();
+
+            $webinars = Webinar::whereIn('id', $webinarsIds)
+                ->where('status', 'active')
+                ->get();
+
+            $reserveMeetings = ReserveMeeting::where('user_id', $user->id)
+                ->whereHas('sale', function ($query) {
+                    $query->whereNull('refund_at');
+                })
+                ->where('status', ReserveMeeting::$open)
+                ->get();
+
+            $supports = Support::where('user_id', $user->id)
+                ->whereNotNull('webinar_id')
+                ->where('status', 'open')
+                ->get();
+
+            $comments = Comment::where('user_id', $user->id)
+                ->whereNotNull('webinar_id')
+                ->where('status', 'active')
+                ->get();
+
+
+            $bundleSales = Sale::where('buyer_id', $user->id)
+                ->where(function ($query) {
+                    $query->whereIn('type', ['bundle', 'installment_payment', 'bridging'])
+                        ->whereNotNull(['bundle_id', 'order_id']);
+                })->get()->unique('bundle_id');
+
+            $webinarSales = Sale::where('buyer_id', $user->id)
+                ->Where(function ($query) use ($user) {
+                    $query->where('buyer_id', $user->id)
+                        ->where('type', 'webinar')
+                        ->whereNull('bundle_id')
+                        ->whereNotNull('order_id');
+                })
+                ->get()
+                ->unique('webinar_id');
+
+            // Merge both collections
+            $bundleSales = $bundleSales->merge($webinarSales);
+            $data['webinarsCount'] = count($webinars);
+            $data['supportsCount'] = count($supports);
+            $data['commentsCount'] = count($comments);
+            $data['reserveMeetingsCount'] = count($reserveMeetings);
+            $data['monthlyChart'] = $this->getMonthlySalesOrPurchase($user);
+            $data['webinars'] = $webinars;
+            $data['bundleSales'] = $bundleSales;
         }
 
-        $bundlesCount = Bundle::count();
-        $activeWebinarsCount = Webinar::where('status', 'active')->count();
-        $webinarsCount = Webinar::count();
-        $employeesCount = User::where('organ_id', $organization->id)->count();
-        $certificatesCount = Certificate::count();
+        $data['giftModal'] = $this->showGiftModal($user);
 
-        return response()->json([
-            'status' => 'success',
-            'message' => 'Portal statistics retrieved successfully',
-            'data' => [
-                'total_employees' => $employeesCount,
-                'total_bundles' => $bundlesCount,
-                'total_active_webinars' => $activeWebinarsCount,
-                'total_webinars' => $webinarsCount,
-                'total_certificates' => $certificatesCount,
-            ]
-        ], 200);
-
-
-
-
-        //     $nextBadge = $user->getBadges(true, true);
-
-        //     $data = [
-        //         'pageTitle' => trans('panel.dashboard'),
-        //         'nextBadge' => $nextBadge,
-        //         'authUser' => UserResource::make($user)
-        //     ];
-
-        //     if (!$user->isUser()) {
-        //         $meetingIds = Meeting::where('creator_id', $user->id)->pluck('id')->toArray();
-        //         $pendingAppointments = ReserveMeeting::whereIn('meeting_id', $meetingIds)
-        //             ->whereHas('sale')
-        //             ->where('status', ReserveMeeting::$pending)
-        //             ->count();
-
-        //         $userWebinarsIds = $user->webinars->pluck('id')->toArray();
-        //         $supports = Support::whereIn('webinar_id', $userWebinarsIds)->where('status', 'open')->get();
-
-        //         $comments = Comment::whereIn('webinar_id', $userWebinarsIds)
-        //             ->where('status', 'active')
-        //             ->whereNull('viewed_at')
-        //             ->get();
-
-        //         $time = time();
-        //         $firstDayMonth = strtotime(date('Y-m-01', $time)); // First day of the month.
-        //         $lastDayMonth = strtotime(date('Y-m-t', $time)); // Last day of the month.
-
-        //         $monthlySales = Sale::where('seller_id', $user->id)
-        //             ->whereNull('refund_at')
-        //             ->whereBetween('created_at', [$firstDayMonth, $lastDayMonth])
-        //             ->get();
-
-        //         $data['pendingAppointments'] = $pendingAppointments;
-        //         $data['supportsCount'] = count($supports);
-        //         $data['commentsCount'] = count($comments);
-        //         $data['monthlySalesCount'] = count($monthlySales) ? $monthlySales->sum('total_amount') : 0;
-        //         $data['monthlyChart'] = $this->getMonthlySalesOrPurchase($user);
-        //     } else {
-        //         $webinarsIds = $user->getPurchasedCoursesIds();
-
-        //         $webinars = Webinar::whereIn('id', $webinarsIds)
-        //             ->where('status', 'active')
-        //             ->get();
-
-        //         $reserveMeetings = ReserveMeeting::where('user_id', $user->id)
-        //             ->whereHas('sale', function ($query) {
-        //                 $query->whereNull('refund_at');
-        //             })
-        //             ->where('status', ReserveMeeting::$open)
-        //             ->get();
-
-        //         $supports = Support::where('user_id', $user->id)
-        //             ->whereNotNull('webinar_id')
-        //             ->where('status', 'open')
-        //             ->get();
-
-        //         $comments = Comment::where('user_id', $user->id)
-        //             ->whereNotNull('webinar_id')
-        //             ->where('status', 'active')
-        //             ->get();
-
-
-        //         $bundleSales = Sale::where('buyer_id', $user->id)
-        //             ->where(function ($query) {
-        //                 $query->whereIn('type', ['bundle', 'installment_payment'])
-        //                     ->whereNotNull(['bundle_id', 'order_id']);
-        //             })->get()->unique('bundle_id');
-
-        //         $webinarSales = Sale::where('buyer_id', $user->id)
-        //             ->Where(function ($query) use ($user) {
-        //                 $query->where('buyer_id', $user->id)
-        //                     ->where('type', 'webinar')
-        //                     ->whereNull('bundle_id')
-        //                     ->whereNotNull('order_id');
-        //             })
-        //             ->get()
-        //             ->unique('webinar_id');
-
-        //         // Merge both collections
-        //         // $bundleSales = $bundleSales->merge($webinarSales);
-
-        //         $data['monthlyChart'] = $this->getMonthlySalesOrPurchase($user);
-        //         $data['webinars'] = $webinars;
-        //         $data['bundleSales'] = SaleResource::collection($bundleSales);
-        //         $data['webinarSales'] = SaleResource::collection($webinarSales);
-        //     }
-
-        //     $data['giftModal'] = $this->showGiftModal($user);
-
-        //     return apiResponse2(1, 'retrived_all', "dashboard", $data);
+        return response()->json($data);
     }
 
     private function showGiftModal($user)

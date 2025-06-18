@@ -10,7 +10,7 @@ use App\Http\Controllers\Api\Admin\UserController;
 use App\Http\Controllers\Api\Admin\CategoryController;
 use App\Http\Controllers\Api\Admin\EnrollmentsController;
 use App\Http\Controllers\Api\Admin\CodesController;
-use App\Http\Controllers\Api\Panel\DashboardController;
+use App\Http\Controllers\Api\Admin\DashboardController;
 use App\Http\Controllers\Api\Panel\RequirementsController;
 use App\Http\Controllers\Api\Panel\SalesController;
 use App\Http\Controllers\Api\Panel\UsersController;
