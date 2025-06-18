@@ -21,6 +21,7 @@ use App\Http\Controllers\Api\Admin\DiscountController;
 use App\Http\Controllers\Api\Admin\DocumentsController;
 use App\Http\Controllers\Api\Admin\InstallmentsController;
 use App\Http\Controllers\Api\Admin\OfflinePaymentsController;
+use App\Http\Controllers\Api\Admin\PlanController;
 use App\Http\Controllers\Api\Admin\QuizzesController;
 use App\Http\Controllers\Api\Admin\RoleController;
 use App\Http\Controllers\Api\Admin\SalesController as AdminSalesController;
@@ -299,6 +300,14 @@ Route::prefix('{url_name}')->group(function () {
                 Route::delete('/{id}', [GroupController::class, 'destroy']);
                 Route::post('/{id}/groupRegistrationPackage', [GroupController::class, 'groupRegistrationPackage']);
             });
+        });
+
+        Route::group(['prefix' => 'plans'], function () {
+            Route::get('/', [PlanController::class, 'index']);
+            Route::post('/', [PlanController::class, 'store']);
+            Route::put('/{id}', [PlanController::class, 'update']);
+            Route::delete('/{id}', [PlanController::class, 'destroy']);
+            Route::post('/{id}/active', [PlanController::class, 'makeActive']);
         });
     });
 });

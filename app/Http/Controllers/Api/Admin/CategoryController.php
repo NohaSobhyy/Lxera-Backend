@@ -46,58 +46,58 @@ class CategoryController extends Controller
         return view('admin.categories.create', $data);
     }
 
-public function store($url_name, Request $request)
-{
-    $this->authorize('admin_categories_create');
+    public function store($url_name, Request $request)
+    {
+        $this->authorize('admin_categories_create');
 
-    $organization = Organization::where('url_name', $url_name)->first();
-    if (!$organization) {
-        return response()->json(['message' => 'Organization not found'], 404);
+        $organization = Organization::where('url_name', $url_name)->first();
+        if (!$organization) {
+            return response()->json(['message' => 'Organization not found'], 404);
+        }
+
+        $this->validate($request, [
+            'title' => 'required|min:3|max:128',
+            'slug' => 'nullable|max:255|unique:categories,slug',
+            'icon' => 'required|string',
+            'status' => 'required|in:active,inactive'
+        ]);
+
+        $data = $request->all();
+        $locale = mb_strtolower($data['locale'] ?? app()->getLocale());
+
+        $order = $data['order'] ?? Category::whereNull('parent_id')->count() + 1;
+
+        $category = Category::create([
+            'slug' => $data['slug'] ?? Category::makeSlug($data['title']),
+            'icon' => $data['icon'],
+            'order' => $order,
+            'status' => $data['status']
+        ]);
+
+        CategoryTranslation::updateOrCreate([
+            'category_id' => $category->id,
+            'locale' => $locale,
+        ], [
+            'title' => $data['title'],
+        ]);
+
+        // Handle subcategories
+        $hasSubCategories = $request->boolean('has_sub');
+        $this->setSubCategory($category, $request->get('sub_categories'), $hasSubCategories, $locale);
+
+        // Handle requirements
+        $hasRequirements = $request->filled('requirements');
+        $this->setRequirements($category, $request->get('requirements'), $hasRequirements, $locale);
+
+        cache()->forget(Category::$cacheKey);
+        removeContentLocale();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Category created successfully',
+            'category_id' => $category->id
+        ], 201);
     }
-
-    $this->validate($request, [
-        'title' => 'required|min:3|max:128',
-        'slug' => 'nullable|max:255|unique:categories,slug',
-        'icon' => 'required|string',
-        'status' => 'required|in:active,inactive'
-    ]);
-
-    $data = $request->all();
-    $locale = mb_strtolower($data['locale'] ?? app()->getLocale());
-
-    $order = $data['order'] ?? Category::whereNull('parent_id')->count() + 1;
-
-    $category = Category::create([
-        'slug' => $data['slug'] ?? Category::makeSlug($data['title']),
-        'icon' => $data['icon'],
-        'order' => $order,
-        'status' => $data['status']
-    ]);
-
-    CategoryTranslation::updateOrCreate([
-        'category_id' => $category->id,
-        'locale' => $locale,
-    ], [
-        'title' => $data['title'],
-    ]);
-
-    // Handle subcategories
-    $hasSubCategories = $request->boolean('has_sub');
-    $this->setSubCategory($category, $request->get('sub_categories'), $hasSubCategories, $locale);
-
-    // Handle requirements
-    $hasRequirements = $request->filled('requirements');
-    $this->setRequirements($category, $request->get('requirements'), $hasRequirements, $locale);
-
-    cache()->forget(Category::$cacheKey);
-    removeContentLocale();
-
-    return response()->json([
-        'success' => true,
-        'message' => 'Category created successfully',
-        'category_id' => $category->id
-    ], 201);
-}
 
 
     public function update($url_name, Request $request, $id)
