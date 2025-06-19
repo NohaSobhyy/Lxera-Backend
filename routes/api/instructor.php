@@ -13,6 +13,11 @@ Route::middleware(['auth:api'])->group(function () {
         // Webinars
         Route::group(['prefix' => 'webinars', 'middleware' => 'can:student_showClasses'], function () {
             Route::get('/', [WebinarsController::class, 'index']);
+            Route::get('/{id}', [WebinarsController::class, 'showSections']);
+            Route::post('/addSection/{webinarId}', [WebinarsController::class, 'addNewSection']);
+            Route::post('/addAssignment/{webinarId}/{chapterId}', [WebinarsController::class, 'addAssignment']);
+            Route::put('/updateAssignment/{assignmentId}', [WebinarsController::class, 'updateAssignment']);
+            Route::post('/addQuiz/{webinarId}/{chapterId}', [WebinarsController::class, 'addQuiz']);
         });
 
 
@@ -20,8 +25,6 @@ Route::middleware(['auth:api'])->group(function () {
         Route::get('bundles/{bundle}/export', ['uses' => 'BundleController@export'])->middleware('api.level-access:teacher');
         Route::apiResource('bundles', BundleController::class)->middleware('api.level-access:teacher');
         Route::apiResource('bundles.webinars', BundleWebinarController::class)->middleware('api.level-access:teacher')->only(['index']);
-
-
 
 
         Route::group(['prefix' => 'quizzes'], function () {

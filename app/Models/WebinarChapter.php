@@ -96,8 +96,6 @@ class WebinarChapter extends Model implements TranslatableContract
             $count += $this->quizzes->where('status', 'active')->count();
         }
 
-
-
         return $count;
     }
 }

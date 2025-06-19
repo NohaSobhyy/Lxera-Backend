@@ -29,7 +29,6 @@ class WebinarAssignment extends Model implements TranslatableContract
         return getTranslateAttributeValue($this, 'description');
     }
 
-
     public function webinar()
     {
         return $this->belongsTo('App\Models\Webinar', 'webinar_id', 'id');
