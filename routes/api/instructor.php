@@ -1,6 +1,8 @@
 <?php
 
+use App\Http\Controllers\Api\Instructor\AssignmentController;
 use App\Http\Controllers\Api\Instructor\DashboardController;
+use App\Http\Controllers\Api\Instructor\QuizzesController;
 use App\Http\Controllers\Api\Instructor\WebinarsController;
 use Illuminate\Support\Facades\Route;
 
@@ -11,13 +13,22 @@ Route::middleware(['auth:api'])->group(function () {
         Route::get('/', [DashboardController::class, 'dashboard'])->middleware('can:show_panel');
 
         // Webinars
-        Route::group(['prefix' => 'webinars', 'middleware' => 'can:student_showClasses'], function () {
+        Route::group(['prefix' => 'webinars'], function () {
+            Route::group(['prefix' => 'assignment'], function () {
+                Route::get('/', [AssignmentController::class, 'index']);
+                Route::post('/', [AssignmentController::class, 'store']);
+                Route::put('/{id}', [AssignmentController::class, 'update']);
+                Route::delete('/{id}', [AssignmentController::class, 'destroy']);
+            });
             Route::get('/', [WebinarsController::class, 'index']);
             Route::get('/{id}', [WebinarsController::class, 'showSections']);
             Route::post('/addSection/{webinarId}', [WebinarsController::class, 'addNewSection']);
-            Route::post('/addAssignment/{webinarId}/{chapterId}', [WebinarsController::class, 'addAssignment']);
-            Route::put('/updateAssignment/{assignmentId}', [WebinarsController::class, 'updateAssignment']);
-            Route::post('/addQuiz/{webinarId}/{chapterId}', [WebinarsController::class, 'addQuiz']);
+            Route::group(['prefix' => 'quiz'], function () {
+                Route::get('/', [QuizzesController::class, 'index']);
+                Route::post('/', [QuizzesController::class, 'store']);
+                Route::put('/{id}', [QuizzesController::class, 'update']);
+                Route::delete('/{id}', [QuizzesController::class, 'destroy']);
+            });
         });
 
 
@@ -47,11 +58,11 @@ Route::middleware(['auth:api'])->group(function () {
             Route::get('/', ['uses' => 'CommentsController@myClassComments']);
             Route::post('/{id}/reply', ['uses' => 'CommentsController@reply']);
         });
-        Route::group(['prefix' => 'assignments'], function () {
-            Route::get('/{assignment}/students', ['uses' => 'AssignmentController@submmision']);
-            Route::get('/students', ['uses' => 'AssignmentController@students']);
-            Route::get('/', ['uses' => 'AssignmentController@index']);
-            Route::post('/histories/{assignment_history}/rate', ['uses' => 'AssignmentController@setGrade']);
-        });
+        // Route::group(['prefix' => 'assignments'], function () {
+        //     Route::get('/{assignment}/students', ['uses' => 'AssignmentController@submmision']);
+        //     Route::get('/students', ['uses' => 'AssignmentController@students']);
+        //     Route::get('/', ['uses' => 'AssignmentController@index']);
+        //     Route::post('/histories/{assignment_history}/rate', ['uses' => 'AssignmentController@setGrade']);
+        // });
     });
 });

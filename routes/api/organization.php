@@ -302,7 +302,7 @@ Route::prefix('{url_name}')->group(function () {
             });
         });
 
-        Route::group(['prefix' => 'plans'], function () {
+        Route::group(['prefix' => 'plans', 'middleware' => 'can:admin_plans'], function () {
             Route::get('/', [PlanController::class, 'index']);
             Route::post('/', [PlanController::class, 'store']);
             Route::put('/{id}', [PlanController::class, 'update']);

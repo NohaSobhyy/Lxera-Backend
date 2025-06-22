@@ -244,200 +244,285 @@ class WebinarsController extends Controller
         ]);
     }
 
-    public function addAssignment($url_name, Request $request, $webinarId, $chapterId)
-    {
-        $organization = Organization::where('url_name', $url_name)->first();
-        if (!$organization) {
-            return response()->json(['message' => 'Organization not found'], 404);
-        }
-        $user = auth()->user();
+    // public function addAssignment($url_name, Request $request, $webinarId, $chapterId)
+    // {
+    //     $organization = Organization::where('url_name', $url_name)->first();
+    //     if (!$organization) {
+    //         return response()->json(['message' => 'Organization not found'], 404);
+    //     }
+    //     $user = auth()->user();
 
-        $data = $request->all();
+    //     $data = $request->all();
 
-        $validator = Validator::make($data, [
-            'title' => 'required|string|max:255',
-            'description' => 'nullable|string',
-            'grade' => 'nullable|numeric',
-            'pass_grade' => 'nullable|numeric',
-            'deadline' => 'nullable|date',
-            'attempts' => 'nullable|integer',
-            'status' => 'nullable|in:active,inactive',
-            'check_previous_parts' => 'nullable|boolean',
-            'access_after_day' => 'nullable|integer',
-            // 'attachments' => 'nullable|array',
-            // 'attachments.*.title' => 'nullable|string|max:255',
-            // 'attachments.*.attach' => 'nullable|string',
-        ]);
+    //     $validator = Validator::make($data, [
+    //         'title' => 'required|string|max:255',
+    //         'description' => 'nullable|string',
+    //         'grade' => 'nullable|numeric',
+    //         'pass_grade' => 'nullable|numeric',
+    //         'deadline' => 'nullable|date',
+    //         'attempts' => 'nullable|integer',
+    //         'status' => 'nullable|in:active,inactive',
+    //         'check_previous_parts' => 'nullable|boolean',
+    //         'access_after_day' => 'nullable|integer',
+    //         // 'attachments' => 'nullable|array',
+    //         // 'attachments.*.title' => 'nullable|string|max:255',
+    //         // 'attachments.*.attach' => 'nullable|string',
+    //     ]);
 
-        if ($validator->fails()) {
-            return response()->json(['errors' => $validator->errors()], 422);
-        }
+    //     if ($validator->fails()) {
+    //         return response()->json(['errors' => $validator->errors()], 422);
+    //     }
 
-        $webinarAssignment = WebinarAssignment::create([
-            'creator_id' => $user->id,
-            'webinar_id' => $webinarId,
-            'chapter_id' => $chapterId,
-            'grade' => $data['grade'] ?? null,
-            'pass_grade' => $data['pass_grade'] ?? null,
-            'deadline' => !empty($data['deadline']) ? strtotime($data['deadline']) : null,
-            'attempts' => $data['attempts'] ?? null,
-            'status' => isset($data['status']) && $data['status'] == 'active' ? 'active' : 'inactive',
-            'check_previous_parts' => $data['check_previous_parts'] ?? false,
-            'access_after_day' => $data['access_after_day'] ?? null,
-            'created_at' => time()
-        ]);
+    //     $webinarAssignment = WebinarAssignment::create([
+    //         'creator_id' => $user->id,
+    //         'webinar_id' => $webinarId,
+    //         'chapter_id' => $chapterId,
+    //         'grade' => $data['grade'] ?? null,
+    //         'pass_grade' => $data['pass_grade'] ?? null,
+    //         'deadline' => !empty($data['deadline']) ? strtotime($data['deadline']) : null,
+    //         'attempts' => $data['attempts'] ?? null,
+    //         'status' => isset($data['status']) && $data['status'] == 'active' ? 'active' : 'inactive',
+    //         'check_previous_parts' => $data['check_previous_parts'] ?? false,
+    //         'access_after_day' => $data['access_after_day'] ?? null,
+    //         'created_at' => time()
+    //     ]);
 
-        // Save attachments if present
-        // if (!empty($data['attachments'])) {
-        //     foreach ($data['attachments'] as $attachmentData) {
-        //         $assignment->attachments()->create([
-        //             'title' => $attachmentData['title'] ?? '',
-        //             'attach' => $attachmentData['attach'] ?? '',
-        //         ]);
-        //     }
-        // }
+    //     // Save attachments if present
+    //     // if (!empty($data['attachments'])) {
+    //     //     foreach ($data['attachments'] as $attachmentData) {
+    //     //         $assignment->attachments()->create([
+    //     //             'title' => $attachmentData['title'] ?? '',
+    //     //             'attach' => $attachmentData['attach'] ?? '',
+    //     //         ]);
+    //     //     }
+    //     // }
 
-        $assignmentTranslation = WebinarAssignmentTranslation::create([
-            'locale' => 'ar',
-            'webinar_assignment_id' => $webinarAssignment->id,
-            'title' => $data['title'],
-            'description' => $data['description'] ?? null,
-        ]);
+    //     $assignmentTranslation = WebinarAssignmentTranslation::create([
+    //         'locale' => 'ar',
+    //         'webinar_assignment_id' => $webinarAssignment->id,
+    //         'title' => $data['title'],
+    //         'description' => $data['description'] ?? null,
+    //     ]);
 
-        $data = [
-            'assignment' => $webinarAssignment,
-            'Translation' => $assignmentTranslation
-        ];
+    //     $data = [
+    //         'assignment' => $webinarAssignment,
+    //         'Translation' => $assignmentTranslation
+    //     ];
 
-        return response()->json([
-            'status' => 'success',
-            'message' => 'Assignment added successfully',
-            'assignment' => $data
-        ]);
-    }
+    //     return response()->json([
+    //         'status' => 'success',
+    //         'message' => 'Assignment added successfully',
+    //         'assignment' => $data
+    //     ]);
+    // }
 
-    public function updateAssignment($url_name, Request $request, $assignmentId)
-    {
-        $organization = Organization::where('url_name', $url_name)->first();
-        if (!$organization) {
-            return response()->json(['message' => 'Organization not found'], 404);
-        }
+    // public function updateAssignment($url_name, Request $request, $assignmentId)
+    // {
+    //     $organization = Organization::where('url_name', $url_name)->first();
+    //     if (!$organization) {
+    //         return response()->json(['message' => 'Organization not found'], 404);
+    //     }
 
-        $assignment = WebinarAssignment::find($assignmentId);
-        if (!$assignment) {
-            return response()->json(['message' => 'Assignment not found'], 404);
-        }
+    //     $assignment = WebinarAssignment::find($assignmentId);
+    //     if (!$assignment) {
+    //         return response()->json(['message' => 'Assignment not found'], 404);
+    //     }
 
-        $data = $request->all();
+    //     $data = $request->all();
 
-        $validator = Validator::make($data, [
-            'title' => 'sometimes|string|max:255',
-            'description' => 'sometimes|string',
-            'grade' => 'sometimes|numeric',
-            'pass_grade' => 'sometimes|numeric',
-            'deadline' => 'sometimes|date',
-            'attempts' => 'sometimes|integer',
-            'status' => 'sometimes|in:active,inactive',
-            'check_previous_parts' => 'sometimes|boolean',
-            'access_after_day' => 'sometimes|integer',
-        ]);
+    //     $validator = Validator::make($data, [
+    //         'title' => 'sometimes|string|max:255',
+    //         'description' => 'sometimes|string',
+    //         'grade' => 'sometimes|numeric',
+    //         'pass_grade' => 'sometimes|numeric',
+    //         'deadline' => 'sometimes|date',
+    //         'attempts' => 'sometimes|integer',
+    //         'status' => 'sometimes|in:active,inactive',
+    //         'check_previous_parts' => 'sometimes|boolean',
+    //         'access_after_day' => 'sometimes|integer',
+    //     ]);
 
-        if ($validator->fails()) {
-            return response()->json(['errors' => $validator->errors()], 422);
-        }
+    //     if ($validator->fails()) {
+    //         return response()->json(['errors' => $validator->errors()], 422);
+    //     }
 
-        $assignment->update([
-            'grade' => $data['grade'] ?? $assignment->grade,
-            'pass_grade' => $data['pass_grade'] ?? $assignment->pass_grade,
-            'deadline' => $data['deadline'] ?? $assignment->deadline,
-            'attempts' => $data['attempts'] ?? $assignment->attempts,
-            'status' => $data['status'] ?? $assignment->status,
-            'check_previous_parts' => $data['check_previous_parts'] ?? $assignment->check_previous_parts,
-            'access_after_day' => $data['access_after_day'] ?? $assignment->access_after_day,
-        ]);
+    //     $assignment->update([
+    //         'grade' => $data['grade'] ?? $assignment->grade,
+    //         'pass_grade' => $data['pass_grade'] ?? $assignment->pass_grade,
+    //         'deadline' => $data['deadline'] ?? $assignment->deadline,
+    //         'attempts' => $data['attempts'] ?? $assignment->attempts,
+    //         'status' => $data['status'] ?? $assignment->status,
+    //         'check_previous_parts' => $data['check_previous_parts'] ?? $assignment->check_previous_parts,
+    //         'access_after_day' => $data['access_after_day'] ?? $assignment->access_after_day,
+    //     ]);
 
-        $translation = $assignment->translation()->where('locale', 'ar')->first();
-        if ($translation) {
-            $translation->update([
-                'title' => $data['title'],
-                'description' => $data['description'] ?? $translation->description,
-            ]);
-        }
+    //     $translation = $assignment->translation()->where('locale', 'ar')->first();
+    //     if ($translation) {
+    //         $translation->update([
+    //             'title' => $data['title'],
+    //             'description' => $data['description'] ?? $translation->description,
+    //         ]);
+    //     }
 
-        return response()->json([
-            'status' => 'success',
-            'message' => 'Assignment updated successfully',
-            'assignment' => [
-                'assignment' => $assignment,
-                'translation' => $translation
-            ]
-        ]);
-    }
+    //     return response()->json([
+    //         'status' => 'success',
+    //         'message' => 'Assignment updated successfully',
+    //         'assignment' => [
+    //             'assignment' => $assignment,
+    //             'translation' => $translation
+    //         ]
+    //     ]);
+    // }
 
+    // public function destroyAssignment($url_name, $assignmentId)
+    // {
+    //     $organization = Organization::where('url_name', $url_name)->first();
+    //     if (!$organization) {
+    //         return response()->json(['message' => 'Organization not found'], 404);
+    //     }
 
+    //     $assignment = WebinarAssignment::find($assignmentId);
+    //     if (!$assignment) {
+    //         return response()->json(['message' => 'Assignment not found'], 404);
+    //     }
 
-    public function addQuiz($url_name, Request $request, $webinarId, $chapterId)
-    {
-        $organization = Organization::where('url_name', $url_name)->first();
-        if (!$organization) {
-            return response()->json(['message' => 'Organization not found'], 404);
-        }
-        $user = auth()->user();
+    //     $assignment->translation()->delete();
 
-        $data = $request->all();
+    //     $assignment->delete();
 
-        $validator = Validator::make($data, [
-            'title' => 'required|string|max:255',
-            'time' => 'nullable|numeric',
-            'attempt' => 'nullable|integer',
-            'pass_mark' => 'nullable|numeric',
-            'certificate' => 'nullable|boolean',
-            'status' => 'nullable|in:active,inactive',
-            'total_mark' => 'nullable|numeric',
-            'display_limited_questions' => 'nullable|boolean',
-            'display_number_of_questions' => 'nullable|integer',
-            'display_questions_randomly' => 'nullable|boolean',
-            'expiry_days' => 'nullable|integer',
-        ]);
+    //     return response()->json([
+    //         'status' => 'success',
+    //         'message' => 'Assignment deleted successfully'
+    //     ]);
+    // }
 
-        if ($validator->fails()) {
-            return response()->json(['errors' => $validator->errors()], 422);
-        }
+    // public function addQuiz($url_name, Request $request, $webinarId, $chapterId)
+    // {
+    //     $organization = Organization::where('url_name', $url_name)->first();
+    //     if (!$organization) {
+    //         return response()->json(['message' => 'Organization not found'], 404);
+    //     }
+    //     $user = auth()->user();
 
-        $webinarQuiz = Quiz::create([
-            'creator_id' => $user->id,
-            'webinar_id' => $webinarId,
-            'chapter_id' => $chapterId,
-            'time' => $data['time'] ?? null,
-            'attempt' => $data['attempt'] ?? null,
-            'pass_mark' => $data['pass_mark'],
-            'certificate' => $data['certificate'] ?? 0,
-            'total_mark' => $data['total_mark'] ?? null,
-            'status' => isset($data['status']) && $data['status'] == 'active' ? 'active' : 'inactive',
-            'display_limited_questions' => $data['display_limited_questions'] ?? false,
-            'display_number_of_questions' => $data['display_number_of_questions'] ?? null,
-            'display_questions_randomly' => $data['display_questions_randomly'] ?? false,
-            'expiry_days' => $data['expiry_days'] ?? null,
-            'created_at' => time()
-        ]);
+    //     $data = $request->all();
 
-        $QuizTranslation = QuizTranslation::create([
-            'locale' => 'ar',
-            'quiz_id' => $webinarQuiz->id,
-            'title' => $data['title'],
-        ]);
+    //     $validator = Validator::make($data, [
+    //         'title' => 'required|string|max:255',
+    //         'time' => 'nullable|numeric',
+    //         'attempt' => 'nullable|integer',
+    //         'pass_mark' => 'nullable|numeric',
+    //         'certificate' => 'nullable|boolean',
+    //         'status' => 'nullable|in:active,inactive',
+    //         'total_mark' => 'nullable|numeric',
+    //         'display_limited_questions' => 'nullable|boolean',
+    //         'display_number_of_questions' => 'nullable|integer',
+    //         'display_questions_randomly' => 'nullable|boolean',
+    //         'expiry_days' => 'nullable|integer',
+    //     ]);
 
-        $data = [
-            'quiz' => $webinarQuiz,
-            'Translation' => $QuizTranslation
-        ];
+    //     if ($validator->fails()) {
+    //         return response()->json(['errors' => $validator->errors()], 422);
+    //     }
 
-        return response()->json([
-            'status' => 'success',
-            'message' => 'Quiz added successfully',
-            'Quiz' => $data
-        ]);
-    }
+    //     $webinarQuiz = Quiz::create([
+    //         'creator_id' => $user->id,
+    //         'webinar_id' => $webinarId,
+    //         'chapter_id' => $chapterId,
+    //         'time' => $data['time'] ?? null,
+    //         'attempt' => $data['attempt'] ?? null,
+    //         'pass_mark' => $data['pass_mark'],
+    //         'certificate' => $data['certificate'] ?? 0,
+    //         'total_mark' => $data['total_mark'] ?? null,
+    //         'status' => isset($data['status']) && $data['status'] == 'active' ? 'active' : 'inactive',
+    //         'display_limited_questions' => $data['display_limited_questions'] ?? false,
+    //         'display_number_of_questions' => $data['display_number_of_questions'] ?? null,
+    //         'display_questions_randomly' => $data['display_questions_randomly'] ?? false,
+    //         'expiry_days' => $data['expiry_days'] ?? null,
+    //         'created_at' => time()
+    //     ]);
+
+    //     $QuizTranslation = QuizTranslation::create([
+    //         'locale' => 'ar',
+    //         'quiz_id' => $webinarQuiz->id,
+    //         'title' => $data['title'],
+    //     ]);
+
+    //     $data = [
+    //         'quiz' => $webinarQuiz,
+    //         'Translation' => $QuizTranslation
+    //     ];
+
+    //     return response()->json([
+    //         'status' => 'success',
+    //         'message' => 'Quiz added successfully',
+    //         'Quiz' => $data
+    //     ]);
+    // }
+
+    // public function updateQuiz($url_name, Request $request, $quizId)
+    // {
+    //     $organization = Organization::where('url_name', $url_name)->first();
+    //     if (!$organization) {
+    //         return response()->json(['message' => 'Organization not found'], 404);
+    //     }
+
+    //     $quiz = Quiz::find($quizId);
+    //     if (!$quiz) {
+    //         return response()->json(['message' => 'Quiz not found'], 404);
+    //     }
+
+    //     $data = $request->all();
+
+    //     $validator = Validator::make($data, [
+    //         'title' => 'sometimes|string|max:255',
+    //         'time' => 'sometimes|numeric',
+    //         'attempt' => 'sometimes|integer',
+    //         'pass_mark' => 'sometimes|numeric',
+    //         'certificate' => 'sometimes|boolean',
+    //         'status' => 'sometimes|in:active,inactive',
+    //         'total_mark' => 'sometimes|danumericte',
+    //         'display_limited_questions' => 'sometimes|in:boolean',
+    //         'display_number_of_questions' => 'sometimes|integer',
+    //         'display_questions_randomly' => 'sometimes|boolean',
+    //         'expiry_days' => 'sometimes|integer',
+    //     ]);
+
+    //     if ($validator->fails()) {
+    //         return response()->json(['errors' => $validator->errors()], 422);
+    //     }
+
+    //     $quiz->update([
+    //         'title' => $data['title'] ?? $quiz->title,
+    //         'time' => $data['time'] ?? $quiz->time,
+    //         'attempt' => $data['attempt'] ?? $quiz->attempt,
+    //         'pass_mark' => $data['pass_mark'] ?? $quiz->pass_mark,
+    //         'certificate' => $data['certificate'] ?? $quiz->certificate,
+    //         'status' => $data['status'] ?? $quiz->status,
+    //         'total_mark' => $data['total_mark'] ?? $quiz->total_mark,
+    //         'display_limited_questions' => $data['display_limited_questions'] ?? $quiz->display_limited_questions,
+    //         'display_number_of_questions' => $data['display_number_of_questions'] ?? $quiz->display_number_of_questions,
+    //         'display_questions_randomly' => $data['display_questions_randomly'] ?? $quiz->display_questions_randomly,
+    //         'expiry_days' => $data['expiry_days'] ?? $quiz->expiry_days,
+    //     ]);
+
+    //     $translation = $quiz->translation()->first();
+    //     if ($translation) {
+    //         $translation->update([
+    //             'title' => $data['title'],
+    //             'locale' => 'ar',
+
+    //         ]);
+    //     }
+
+    //     return response()->json([
+    //         'status' => 'success',
+    //         'message' => 'Quiz updated successfully',
+    //         'quiz' => [
+    //             'quiz' => $quiz,
+    //             'translation' => $translation
+    //         ]
+    //     ]);
+    // }
 
     public function update(Request $request, $id)
     {
@@ -706,7 +791,7 @@ class WebinarsController extends Controller
 
         $webinarsCount = $query->count();
 
-        $webinars = $query->paginate(10);
+        $webinars = $query->get();
 
         $webinarSales = Sale::where('seller_id', $user->id)
             ->where('type', 'webinar')

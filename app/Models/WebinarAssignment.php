@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 use Astrotomic\Translatable\Contracts\Translatable as TranslatableContract;
 use Astrotomic\Translatable\Translatable;
 use App\Models\Traits\SequenceContent;
+use App\Models\Translation\WebinarAssignmentTranslation;
 
 class WebinarAssignment extends Model implements TranslatableContract
 {
@@ -61,6 +62,8 @@ class WebinarAssignment extends Model implements TranslatableContract
             ->first();
     }
 
+
+
     public function getDeadlineTimestamp($user = null)
     {
         $deadline = null; // default can access
@@ -71,18 +74,18 @@ class WebinarAssignment extends Model implements TranslatableContract
 
         // if (!empty($this->deadline)) {
 
-            // $deadline = strtotime("+{$this->deadline} days", $this->created_at);
-          //  dd( $deadline);
-            // $sale = Sale::where('buyer_id', $user->id)
-            //     ->where('webinar_id', $this->webinar_id)
-            //     ->whereNull('refund_at')
-            //     ->first();
+        // $deadline = strtotime("+{$this->deadline} days", $this->created_at);
+        //  dd( $deadline);
+        // $sale = Sale::where('buyer_id', $user->id)
+        //     ->where('webinar_id', $this->webinar_id)
+        //     ->whereNull('refund_at')
+        //     ->first();
 
-            // if (!empty($sale)) {
-            //     $deadline = strtotime("+{$this->deadline} days", $sale->created_at);
-            // } else {
-            //     $deadline = false;
-            // }
+        // if (!empty($sale)) {
+        //     $deadline = strtotime("+{$this->deadline} days", $sale->created_at);
+        // } else {
+        //     $deadline = false;
+        // }
         // }
 
         return $this->deadline;
