@@ -16,8 +16,8 @@ class NotificationsController extends Controller
             $notifications = $this->unRead();
         } elseif ($status == 'read') {
             $notifications = $this->read();
-        }else{
-            $notifications=$this->all() ;
+        } else {
+            $notifications = $this->all();
         }
         $notifications = self::brief($notifications);
         return apiResponse2(1, 'retrieved', trans('public.retrieved'), $notifications);
@@ -32,14 +32,13 @@ class NotificationsController extends Controller
                 'message' => $notification->message,
                 'type' => $notification->type,
                 'status' => ($notification->notificationStatus) ? 'read' : 'unread',
-                'created_at'=>$notification->created_at
+                'created_at' => $notification->created_at
             ];
         });
         return [
             'count' => count($notifications),
             'notifications' => $notifications,
         ];
-
     }
 
     public function seen($id)
@@ -66,7 +65,6 @@ class NotificationsController extends Controller
                         'seen_at' => time()
                     ]);
                     return apiResponse2(1, 'seen', trans('api.notification.seen'));
-
                 }
             }
 
@@ -81,7 +79,6 @@ class NotificationsController extends Controller
         $user = apiAuth();
         $unReadNotifications = $user->getUnReadNotifications();
         return $unReadNotifications;
-
     }
 
     public function read()

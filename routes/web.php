@@ -161,7 +161,7 @@ Route::group(['namespace' => 'Web', 'middleware' => ['check_mobile_app', 'impers
           
 
             Route::get('/assignment/{assignmentId}/history/{historyId}/message/{messageId}/downloadAttach', 'AssignmentHistoryController@downloadAttach');
-
+            
             Route::group(['prefix' => '/learning/{id}/forum'], function () { // LearningPageForumTrait
                 Route::get('/', 'LearningPageController@forum');
                 Route::post('/store', 'LearningPageController@forumStoreNewQuestion');
