@@ -3,13 +3,25 @@
 namespace App\Http\Controllers\Api\Instructor;
 
 use App\Exports\WebinarStudents;
+use App\Http\Controllers\Api\Instructor\traits\CheckContentLimitationTrait;
+use App\Http\Controllers\Api\Instructor\traits\InstallmentsTrait;
 use App\Http\Controllers\Controller;
+use App\Mixins\Cashback\CashbackRules;
+use App\Mixins\Installment\InstallmentPlans;
+use App\Models\AdvertisingBanner;
 use App\Models\Api\Organization;
+use App\Models\Bundle;
+use App\Models\BundleWebinar;
 use App\Models\Category;
 use App\Models\FAQ;
+use App\Models\Favorite;
 use App\Models\File;
+use App\Models\InstallmentOrder;
+use App\Models\Order;
+use App\Models\OrderItem;
 use App\Models\Prerequisite;
 use App\Models\Quiz;
+use App\Models\QuizzesResult;
 use App\Models\Role;
 use App\Models\Sale;
 use App\Models\Session;
@@ -25,12 +37,18 @@ use App\Models\Webinar;
 use App\Models\WebinarAssignment;
 use App\Models\WebinarPartnerTeacher;
 use App\Models\WebinarFilterOption;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
+
+use Illuminate\Support\Facades\DB;
 use Maatwebsite\Excel\Facades\Excel;
 use Illuminate\Support\Facades\Validator;
 
 class WebinarsController extends Controller
 {
+    use CheckContentLimitationTrait;
+    use InstallmentsTrait;
+
     public function index(Request $request)
     {
         $user = auth()->user();
@@ -243,286 +261,6 @@ class WebinarsController extends Controller
             'Chapter' => $data
         ]);
     }
-
-    // public function addAssignment($url_name, Request $request, $webinarId, $chapterId)
-    // {
-    //     $organization = Organization::where('url_name', $url_name)->first();
-    //     if (!$organization) {
-    //         return response()->json(['message' => 'Organization not found'], 404);
-    //     }
-    //     $user = auth()->user();
-
-    //     $data = $request->all();
-
-    //     $validator = Validator::make($data, [
-    //         'title' => 'required|string|max:255',
-    //         'description' => 'nullable|string',
-    //         'grade' => 'nullable|numeric',
-    //         'pass_grade' => 'nullable|numeric',
-    //         'deadline' => 'nullable|date',
-    //         'attempts' => 'nullable|integer',
-    //         'status' => 'nullable|in:active,inactive',
-    //         'check_previous_parts' => 'nullable|boolean',
-    //         'access_after_day' => 'nullable|integer',
-    //         // 'attachments' => 'nullable|array',
-    //         // 'attachments.*.title' => 'nullable|string|max:255',
-    //         // 'attachments.*.attach' => 'nullable|string',
-    //     ]);
-
-    //     if ($validator->fails()) {
-    //         return response()->json(['errors' => $validator->errors()], 422);
-    //     }
-
-    //     $webinarAssignment = WebinarAssignment::create([
-    //         'creator_id' => $user->id,
-    //         'webinar_id' => $webinarId,
-    //         'chapter_id' => $chapterId,
-    //         'grade' => $data['grade'] ?? null,
-    //         'pass_grade' => $data['pass_grade'] ?? null,
-    //         'deadline' => !empty($data['deadline']) ? strtotime($data['deadline']) : null,
-    //         'attempts' => $data['attempts'] ?? null,
-    //         'status' => isset($data['status']) && $data['status'] == 'active' ? 'active' : 'inactive',
-    //         'check_previous_parts' => $data['check_previous_parts'] ?? false,
-    //         'access_after_day' => $data['access_after_day'] ?? null,
-    //         'created_at' => time()
-    //     ]);
-
-    //     // Save attachments if present
-    //     // if (!empty($data['attachments'])) {
-    //     //     foreach ($data['attachments'] as $attachmentData) {
-    //     //         $assignment->attachments()->create([
-    //     //             'title' => $attachmentData['title'] ?? '',
-    //     //             'attach' => $attachmentData['attach'] ?? '',
-    //     //         ]);
-    //     //     }
-    //     // }
-
-    //     $assignmentTranslation = WebinarAssignmentTranslation::create([
-    //         'locale' => 'ar',
-    //         'webinar_assignment_id' => $webinarAssignment->id,
-    //         'title' => $data['title'],
-    //         'description' => $data['description'] ?? null,
-    //     ]);
-
-    //     $data = [
-    //         'assignment' => $webinarAssignment,
-    //         'Translation' => $assignmentTranslation
-    //     ];
-
-    //     return response()->json([
-    //         'status' => 'success',
-    //         'message' => 'Assignment added successfully',
-    //         'assignment' => $data
-    //     ]);
-    // }
-
-    // public function updateAssignment($url_name, Request $request, $assignmentId)
-    // {
-    //     $organization = Organization::where('url_name', $url_name)->first();
-    //     if (!$organization) {
-    //         return response()->json(['message' => 'Organization not found'], 404);
-    //     }
-
-    //     $assignment = WebinarAssignment::find($assignmentId);
-    //     if (!$assignment) {
-    //         return response()->json(['message' => 'Assignment not found'], 404);
-    //     }
-
-    //     $data = $request->all();
-
-    //     $validator = Validator::make($data, [
-    //         'title' => 'sometimes|string|max:255',
-    //         'description' => 'sometimes|string',
-    //         'grade' => 'sometimes|numeric',
-    //         'pass_grade' => 'sometimes|numeric',
-    //         'deadline' => 'sometimes|date',
-    //         'attempts' => 'sometimes|integer',
-    //         'status' => 'sometimes|in:active,inactive',
-    //         'check_previous_parts' => 'sometimes|boolean',
-    //         'access_after_day' => 'sometimes|integer',
-    //     ]);
-
-    //     if ($validator->fails()) {
-    //         return response()->json(['errors' => $validator->errors()], 422);
-    //     }
-
-    //     $assignment->update([
-    //         'grade' => $data['grade'] ?? $assignment->grade,
-    //         'pass_grade' => $data['pass_grade'] ?? $assignment->pass_grade,
-    //         'deadline' => $data['deadline'] ?? $assignment->deadline,
-    //         'attempts' => $data['attempts'] ?? $assignment->attempts,
-    //         'status' => $data['status'] ?? $assignment->status,
-    //         'check_previous_parts' => $data['check_previous_parts'] ?? $assignment->check_previous_parts,
-    //         'access_after_day' => $data['access_after_day'] ?? $assignment->access_after_day,
-    //     ]);
-
-    //     $translation = $assignment->translation()->where('locale', 'ar')->first();
-    //     if ($translation) {
-    //         $translation->update([
-    //             'title' => $data['title'],
-    //             'description' => $data['description'] ?? $translation->description,
-    //         ]);
-    //     }
-
-    //     return response()->json([
-    //         'status' => 'success',
-    //         'message' => 'Assignment updated successfully',
-    //         'assignment' => [
-    //             'assignment' => $assignment,
-    //             'translation' => $translation
-    //         ]
-    //     ]);
-    // }
-
-    // public function destroyAssignment($url_name, $assignmentId)
-    // {
-    //     $organization = Organization::where('url_name', $url_name)->first();
-    //     if (!$organization) {
-    //         return response()->json(['message' => 'Organization not found'], 404);
-    //     }
-
-    //     $assignment = WebinarAssignment::find($assignmentId);
-    //     if (!$assignment) {
-    //         return response()->json(['message' => 'Assignment not found'], 404);
-    //     }
-
-    //     $assignment->translation()->delete();
-
-    //     $assignment->delete();
-
-    //     return response()->json([
-    //         'status' => 'success',
-    //         'message' => 'Assignment deleted successfully'
-    //     ]);
-    // }
-
-    // public function addQuiz($url_name, Request $request, $webinarId, $chapterId)
-    // {
-    //     $organization = Organization::where('url_name', $url_name)->first();
-    //     if (!$organization) {
-    //         return response()->json(['message' => 'Organization not found'], 404);
-    //     }
-    //     $user = auth()->user();
-
-    //     $data = $request->all();
-
-    //     $validator = Validator::make($data, [
-    //         'title' => 'required|string|max:255',
-    //         'time' => 'nullable|numeric',
-    //         'attempt' => 'nullable|integer',
-    //         'pass_mark' => 'nullable|numeric',
-    //         'certificate' => 'nullable|boolean',
-    //         'status' => 'nullable|in:active,inactive',
-    //         'total_mark' => 'nullable|numeric',
-    //         'display_limited_questions' => 'nullable|boolean',
-    //         'display_number_of_questions' => 'nullable|integer',
-    //         'display_questions_randomly' => 'nullable|boolean',
-    //         'expiry_days' => 'nullable|integer',
-    //     ]);
-
-    //     if ($validator->fails()) {
-    //         return response()->json(['errors' => $validator->errors()], 422);
-    //     }
-
-    //     $webinarQuiz = Quiz::create([
-    //         'creator_id' => $user->id,
-    //         'webinar_id' => $webinarId,
-    //         'chapter_id' => $chapterId,
-    //         'time' => $data['time'] ?? null,
-    //         'attempt' => $data['attempt'] ?? null,
-    //         'pass_mark' => $data['pass_mark'],
-    //         'certificate' => $data['certificate'] ?? 0,
-    //         'total_mark' => $data['total_mark'] ?? null,
-    //         'status' => isset($data['status']) && $data['status'] == 'active' ? 'active' : 'inactive',
-    //         'display_limited_questions' => $data['display_limited_questions'] ?? false,
-    //         'display_number_of_questions' => $data['display_number_of_questions'] ?? null,
-    //         'display_questions_randomly' => $data['display_questions_randomly'] ?? false,
-    //         'expiry_days' => $data['expiry_days'] ?? null,
-    //         'created_at' => time()
-    //     ]);
-
-    //     $QuizTranslation = QuizTranslation::create([
-    //         'locale' => 'ar',
-    //         'quiz_id' => $webinarQuiz->id,
-    //         'title' => $data['title'],
-    //     ]);
-
-    //     $data = [
-    //         'quiz' => $webinarQuiz,
-    //         'Translation' => $QuizTranslation
-    //     ];
-
-    //     return response()->json([
-    //         'status' => 'success',
-    //         'message' => 'Quiz added successfully',
-    //         'Quiz' => $data
-    //     ]);
-    // }
-
-    // public function updateQuiz($url_name, Request $request, $quizId)
-    // {
-    //     $organization = Organization::where('url_name', $url_name)->first();
-    //     if (!$organization) {
-    //         return response()->json(['message' => 'Organization not found'], 404);
-    //     }
-
-    //     $quiz = Quiz::find($quizId);
-    //     if (!$quiz) {
-    //         return response()->json(['message' => 'Quiz not found'], 404);
-    //     }
-
-    //     $data = $request->all();
-
-    //     $validator = Validator::make($data, [
-    //         'title' => 'sometimes|string|max:255',
-    //         'time' => 'sometimes|numeric',
-    //         'attempt' => 'sometimes|integer',
-    //         'pass_mark' => 'sometimes|numeric',
-    //         'certificate' => 'sometimes|boolean',
-    //         'status' => 'sometimes|in:active,inactive',
-    //         'total_mark' => 'sometimes|danumericte',
-    //         'display_limited_questions' => 'sometimes|in:boolean',
-    //         'display_number_of_questions' => 'sometimes|integer',
-    //         'display_questions_randomly' => 'sometimes|boolean',
-    //         'expiry_days' => 'sometimes|integer',
-    //     ]);
-
-    //     if ($validator->fails()) {
-    //         return response()->json(['errors' => $validator->errors()], 422);
-    //     }
-
-    //     $quiz->update([
-    //         'title' => $data['title'] ?? $quiz->title,
-    //         'time' => $data['time'] ?? $quiz->time,
-    //         'attempt' => $data['attempt'] ?? $quiz->attempt,
-    //         'pass_mark' => $data['pass_mark'] ?? $quiz->pass_mark,
-    //         'certificate' => $data['certificate'] ?? $quiz->certificate,
-    //         'status' => $data['status'] ?? $quiz->status,
-    //         'total_mark' => $data['total_mark'] ?? $quiz->total_mark,
-    //         'display_limited_questions' => $data['display_limited_questions'] ?? $quiz->display_limited_questions,
-    //         'display_number_of_questions' => $data['display_number_of_questions'] ?? $quiz->display_number_of_questions,
-    //         'display_questions_randomly' => $data['display_questions_randomly'] ?? $quiz->display_questions_randomly,
-    //         'expiry_days' => $data['expiry_days'] ?? $quiz->expiry_days,
-    //     ]);
-
-    //     $translation = $quiz->translation()->first();
-    //     if ($translation) {
-    //         $translation->update([
-    //             'title' => $data['title'],
-    //             'locale' => 'ar',
-
-    //         ]);
-    //     }
-
-    //     return response()->json([
-    //         'status' => 'success',
-    //         'message' => 'Quiz updated successfully',
-    //         'quiz' => [
-    //             'quiz' => $quiz,
-    //             'translation' => $translation
-    //         ]
-    //     ]);
-    // }
 
     public function update(Request $request, $id)
     {
@@ -1588,5 +1326,363 @@ class WebinarsController extends Controller
         return response()->json([
             'code' => 200,
         ], 200);
+    }
+
+    public function course($id, $justReturnData = false)
+    {
+        $user = null;
+
+        if (auth()->check()) {
+            $user = auth()->user();
+        }
+
+
+        if (!$justReturnData) {
+            $contentLimitation = $this->checkContentLimitation($user, true);
+            if ($contentLimitation != "ok") {
+                return $contentLimitation;
+            }
+        }
+
+        $course = Webinar::where('id', $id)
+            ->with([
+                'quizzes' => function ($query) {
+                    $query->where('status', 'active')
+                        ->with(['quizResults', 'quizQuestions']);
+                },
+                'tags',
+                'prerequisites' => function ($query) {
+                    $query->with(['prerequisiteWebinar' => function ($query) {
+                        $query->with(['teacher' => function ($qu) {
+                            $qu->select('id', 'full_name', 'avatar');
+                        }]);
+                    }]);
+                    $query->orderBy('order', 'asc');
+                },
+                'faqs' => function ($query) {
+                    $query->orderBy('order', 'asc');
+                },
+                'webinarExtraDescription' => function ($query) {
+                    $query->orderBy('order', 'asc');
+                },
+                'chapters' => function ($query) use ($user) {
+                    $query->where('status', WebinarChapter::$chapterActive);
+                    $query->orderBy('order', 'asc');
+
+                    $query->with([
+                        'chapterItems' => function ($query) {
+                            $query->orderBy('order', 'asc');
+                        }
+                    ]);
+                },
+                'files' => function ($query) use ($user) {
+                    $query->join('webinar_chapters', 'webinar_chapters.id', '=', 'files.chapter_id')
+                        ->select('files.*', DB::raw('webinar_chapters.order as chapterOrder'))
+                        ->where('files.status', WebinarChapter::$chapterActive)
+                        ->orderBy('chapterOrder', 'asc')
+                        ->orderBy('files.order', 'asc')
+                        ->with([
+                            'learningStatus' => function ($query) use ($user) {
+                                $query->where('user_id', !empty($user) ? $user->id : null);
+                            }
+                        ]);
+                },
+                'textLessons' => function ($query) use ($user) {
+                    $query->where('status', WebinarChapter::$chapterActive)
+                        ->withCount(['attachments'])
+                        ->orderBy('order', 'asc')
+                        ->with([
+                            'learningStatus' => function ($query) use ($user) {
+                                $query->where('user_id', !empty($user) ? $user->id : null);
+                            }
+                        ]);
+                },
+                'sessions' => function ($query) use ($user) {
+                    $query->where('status', WebinarChapter::$chapterActive)
+                        ->orderBy('order', 'asc')
+                        ->with([
+                            'learningStatus' => function ($query) use ($user) {
+                                $query->where('user_id', !empty($user) ? $user->id : null);
+                            }
+                        ]);
+                },
+                'assignments' => function ($query) {
+                    $query->where('status', WebinarChapter::$chapterActive);
+                },
+                'tickets' => function ($query) {
+                    $query->orderBy('order', 'asc');
+                },
+                'filterOptions',
+                'category',
+                'teacher',
+                'reviews' => function ($query) {
+                    $query->where('status', 'active');
+                    $query->with([
+                        'comments' => function ($query) {
+                            $query->where('status', 'active');
+                        },
+                        'creator' => function ($qu) {
+                            $qu->select('id', 'full_name', 'avatar');
+                        }
+                    ]);
+                },
+                'comments' => function ($query) {
+                    $query->where('status', 'active');
+                    $query->whereNull('reply_id');
+                    $query->with([
+                        'user' => function ($query) {
+                            $query->select('id', 'full_name', 'role_name', 'role_id', 'avatar', 'avatar_settings');
+                        },
+                        'replies' => function ($query) {
+                            $query->where('status', 'active');
+                            $query->with([
+                                'user' => function ($query) {
+                                    $query->select('id', 'full_name', 'role_name', 'role_id', 'avatar', 'avatar_settings');
+                                }
+                            ]);
+                        }
+                    ]);
+                    $query->orderBy('created_at', 'desc');
+                },
+            ])
+            ->withCount([
+                'sales' => function ($query) {
+                    $query->whereNull('refund_at');
+                },
+                'noticeboards'
+            ])
+            // ->where('status', 'active')
+            ->first();
+
+        if (empty($course)) {
+            return $justReturnData ? false : back();
+        }
+
+        if (!$justReturnData) {
+            $installmentLimitation = $this->installmentContentLimitation($user, $course->id, 'webinar_id');
+
+            if ($installmentLimitation != "ok") {
+                return $installmentLimitation;
+            }
+        }
+
+        $hasBought = $course->checkUserHasBought($user, true, true);
+        $isPrivate = $course->private;
+
+        if (!empty($user) and ($user->id == $course->creator_id or $user->organ_id == $course->creator_id or $user->isAdmin())) {
+            $isPrivate = false;
+        }
+
+        if ($isPrivate and $hasBought) { // check the user has bought the course or not
+            $isPrivate = false;
+        }
+
+        if ($isPrivate) {
+            return $justReturnData ? false : back();
+        }
+
+        $isFavorite = false;
+
+        if (!empty($user)) {
+            $isFavorite = Favorite::where('webinar_id', $course->id)
+                ->where('user_id', $user->id)
+                ->first();
+        }
+
+        $webinarContentCount = 0;
+        if (!empty($course->sessions)) {
+            $webinarContentCount += $course->sessions->count();
+        }
+        if (!empty($course->files)) {
+            $webinarContentCount += $course->files->count();
+        }
+        if (!empty($course->textLessons)) {
+            $webinarContentCount += $course->textLessons->count();
+        }
+        if (!empty($course->quizzes)) {
+            $webinarContentCount += $course->quizzes->count();
+        }
+        if (!empty($course->assignments)) {
+            $webinarContentCount += $course->assignments->count();
+        }
+
+        $advertisingBanners = AdvertisingBanner::where('published', true)
+            ->whereIn('position', ['course', 'course_sidebar'])
+            ->get();
+
+        $sessionsWithoutChapter = $course->sessions->whereNull('chapter_id');
+
+        $filesWithoutChapter = $course->files->whereNull('chapter_id');
+
+        $textLessonsWithoutChapter = $course->textLessons->whereNull('chapter_id');
+
+        $quizzes = $course->quizzes->whereNull('chapter_id');
+
+        if ($user) {
+            $quizzes = $this->checkQuizzesResults($user, $quizzes);
+
+            if (!empty($course->chapters) and count($course->chapters)) {
+                foreach ($course->chapters as $chapter) {
+                    if (!empty($chapter->chapterItems) and count($chapter->chapterItems)) {
+                        foreach ($chapter->chapterItems as $chapterItem) {
+                            if (!empty($chapterItem->quiz)) {
+                                $chapterItem->quiz = $this->checkQuizResults($user, $chapterItem->quiz);
+                            }
+                        }
+                    }
+                }
+            }
+
+            if (!empty($course->quizzes) and count($course->quizzes)) {
+                $course->quizzes = $this->checkQuizzesResults($user, $course->quizzes);
+            }
+        }
+
+        $pageRobot = getPageRobot('course_show'); // index
+        $canSale = ($course->canSale() and !$hasBought);
+
+        /* Installments */
+        $showInstallments = true;
+        $overdueInstallmentOrders = $this->checkUserHasOverdueInstallment($user);
+
+        if ($overdueInstallmentOrders->isNotEmpty() and getInstallmentsSettings('disable_instalments_when_the_user_have_an_overdue_installment')) {
+            $showInstallments = false;
+        }
+
+        if ($canSale and !empty($course->price) and $course->price > 0 and $showInstallments and getInstallmentsSettings('status') and (empty($user) or $user->enable_installments)) {
+            $installmentPlans = new InstallmentPlans($user);
+            $installments = $installmentPlans->getPlans('courses', $course->id, $course->type, $course->category_id, $course->teacher_id);
+        }
+
+        /* Cashback Rules */
+        if ($canSale and !empty($course->price) and getFeaturesSettings('cashback_active') and (empty($user) or !$user->disable_cashback)) {
+            $cashbackRulesMixin = new CashbackRules($user);
+            $cashbackRules = $cashbackRulesMixin->getRules('courses', $course->id, $course->type, $course->category_id, $course->teacher_id);
+        }
+
+        $checkAllContentPass = $course->chapters()->where('user_id', $user->id)->get();
+        $bundleId = BundleWebinar::where('webinar_id', $course->id)->value('bundle_id');
+        $bundle = Bundle::find($bundleId);
+
+        $group = $course->groups()->whereHas('enrollments', function ($query) use ($user) {
+            $query->where('user_id', $user->id);
+        })->first();
+
+        $data = [
+            'pageTitle' => $course->title,
+            'pageDescription' => $course->seo_description,
+            'pageRobot' => $pageRobot,
+            'course' => $course,
+            'isFavorite' => $isFavorite,
+            'hasBought' => $hasBought,
+            'user' => $user,
+            'webinarContentCount' => $webinarContentCount,
+            'advertisingBanners' => $advertisingBanners->where('position', 'course'),
+            'advertisingBannersSidebar' => $advertisingBanners->where('position', 'course_sidebar'),
+            'activeSpecialOffer' => $course->activeSpecialOffer(),
+            'sessionsWithoutChapter' => $sessionsWithoutChapter,
+            'filesWithoutChapter' => $filesWithoutChapter,
+            'textLessonsWithoutChapter' => $textLessonsWithoutChapter,
+            'quizzes' => $quizzes,
+            'installments' => $installments ?? null,
+            'cashbackRules' => $cashbackRules ?? null,
+            'checkAllContentPass' => $checkAllContentPass,
+            'bundle' => $bundle,
+            'group' => $group,
+
+
+        ];
+
+        // check for certificate
+        if (!empty($user)) {
+            $course->makeCourseCertificateForUser($user);
+        }
+
+        if ($justReturnData) {
+            return $data;
+        }
+
+        // dd($bundleId);
+        $order_id = OrderItem::where('bundle_id', $bundleId)
+            ->where('user_id', auth()->user()->id)
+            ->latest('created_at')
+            ->value('order_id');
+
+        $order = Order::where('id', $order_id)->first();
+        $installment_order = InstallmentOrder::where('bundle_id', $bundleId)->where('user_id', auth()->user()->id)->first();
+        //////////////////////////////////////
+        $bundle_start = Bundle::where('id', $bundleId)->value('start_date');
+        $bundle_start = Carbon::createFromTimestamp($bundle_start);
+        // dd($order_id);
+        if (optional($order)->status == 'paid' && $order->user_id == auth()->user()->id) {
+            if (now() >= $bundle_start) {
+                return view('web.default.course.index', $data);
+            } else {
+                $now = Carbon::now();
+                $endTime = $bundle_start->timestamp * 1000;
+                $remainingTime = $endTime - ($now->timestamp * 1000);
+                return view('errors.notstart',  ['remainingTime' => $remainingTime]);
+            }
+        } elseif (optional($installment_order)->status == 'open' && $installment_order->user_id == auth()->user()->id) {
+            if (now() >= $bundle_start) {
+                return view('web.default.course.index', $data);
+            } else {
+                $now = Carbon::now();
+                $endTime = $bundle_start->timestamp * 1000;
+                $remainingTime = $endTime - ($now->timestamp * 1000);
+                return view('errors.notstart',  ['remainingTime' => $remainingTime]);
+            }
+        } else {
+            return view('errors.notPaid');
+        }
+    }
+
+    private function checkQuizzesResults($user, $quizzes)
+    {
+        $canDownloadCertificate = false;
+
+        foreach ($quizzes as $quiz) {
+            $quiz = $this->checkQuizResults($user, $quiz);
+        }
+
+        return $quizzes;
+    }
+    private function checkQuizResults($user, $quiz)
+    {
+        $canDownloadCertificate = false;
+
+        $canTryAgainQuiz = false;
+        $userQuizDone = QuizzesResult::where('quiz_id', $quiz->id)
+            ->where('user_id', $user->id)
+            ->orderBy('created_at', 'desc')
+            ->get();
+
+        if (count($userQuizDone)) {
+            $quiz->user_grade = $userQuizDone->first()->user_grade;
+            $quiz->result_count = $userQuizDone->count();
+            $quiz->result = $userQuizDone->first();
+
+            $status_pass = false;
+            foreach ($userQuizDone as $result) {
+                if ($result->status == QuizzesResult::$passed) {
+                    $status_pass = true;
+                }
+            }
+
+            $quiz->result_status = $status_pass ? QuizzesResult::$passed : $userQuizDone->first()->status;
+
+            if ($quiz->certificate and $quiz->result_status == QuizzesResult::$passed) {
+                $canDownloadCertificate = true;
+            }
+        }
+
+        if (!isset($quiz->attempt) or (count($userQuizDone) < $quiz->attempt and $quiz->result_status !== QuizzesResult::$passed)) {
+            $canTryAgainQuiz = true;
+        }
+
+        $quiz->can_try = $canTryAgainQuiz;
+        $quiz->can_download_certificate = $canDownloadCertificate;
+
+        return $quiz;
     }
 }

@@ -74,7 +74,7 @@ Route::group(['namespace' => 'Auth', 'middleware' => ['check_mobile_app', 'share
 
     Route::get('/linkedin', 'SocialiteController@redirectToLinkedIn')->name('login.linkedin');
     Route::get('/linkedin/callback', 'SocialiteController@handleLinkedInCallback');
-    
+
     Route::get('/Apple', 'SocialiteController@redirectToApple')->name('login.apple');
     Route::get('/Apple/callback', 'SocialiteController@handleAppleCallback');
 
@@ -106,10 +106,9 @@ Route::group(['namespace' => 'Web', 'middleware' => ['check_mobile_app', 'impers
 
             if (auth()->check() && auth()->user()->isAdmin()) {
                 return redirect('/admin');
-            }else if(auth()->check() && (auth()->user()->isUser() || auth()->user()->isTeacher() || auth()->user()->isOrganization())){
+            } else if (auth()->check() && (auth()->user()->isUser() || auth()->user()->isTeacher() || auth()->user()->isOrganization())) {
                 return redirect('/panel');
-            }
-            else if (auth()->check() && auth()->user()->student) {
+            } else if (auth()->check() && auth()->user()->student) {
                 return redirect('/panel/requirements/applied');
             } else {
                 return redirect('/apply');
@@ -128,7 +127,7 @@ Route::group(['namespace' => 'Web', 'middleware' => ['check_mobile_app', 'impers
         Route::get('/apply/{bundle}', 'ApplyController@index');
         Route::post('/apply', 'ApplyController@checkout')->name('payFee');
 
-        Route::get('/payment/{order}','PaymentController@index');
+        Route::get('/payment/{order}', 'PaymentController@index');
         Route::get('/professionalCourses', 'ApplyController@showProfessionalWebinar');
     });
 
@@ -150,16 +149,12 @@ Route::group(['namespace' => 'Web', 'middleware' => ['check_mobile_app', 'impers
 
         Route::group(['middleware' => 'web.auth'], function () {
             //         Route::get('/{slug}/installments', 'WebinarController@getInstallmentsByCourse');
-
             Route::post('/learning/itemInfo', 'LearningPageController@getItemInfo');
             Route::get('/learning/{id}', 'LearningPageController@index');
             Route::get('/learning/{id}/noticeboards', 'LearningPageController@noticeboards');
             Route::get('/assignment/{assignmentId}/download/{id}/attach', 'LearningPageController@downloadAssignment');
             Route::post('/assignment/{assignmentId}/history/{historyId}/message', 'AssignmentHistoryController@storeMessage');
             Route::post('/assignment/{assignmentId}/history/{historyId}/setGrade', 'AssignmentHistoryController@setGrade');
-
-          
-
             Route::get('/assignment/{assignmentId}/history/{historyId}/message/{messageId}/downloadAttach', 'AssignmentHistoryController@downloadAttach');
 
             Route::group(['prefix' => '/learning/{id}/forum'], function () { // LearningPageForumTrait
