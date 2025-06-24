@@ -64,7 +64,7 @@
                                         </span>
                                     </div>
                                     <input type="text" name="from" autocomplete="off" class="form-control @if(!empty(request()->get('from'))) datepicker @else datefilter @endif"
-                                           aria-describedby="dateInputGroupPrepend" value="{{ request()->get('from','') }}"/>
+                                        aria-describedby="dateInputGroupPrepend" value="{{ request()->get('from','') }}"/>
                                 </div>
                             </div>
                         </div>
@@ -78,7 +78,7 @@
                                         </span>
                                     </div>
                                     <input type="text" name="to" autocomplete="off" class="form-control @if(!empty(request()->get('to'))) datepicker @else datefilter @endif"
-                                           aria-describedby="dateInputGroupPrepend" value="{{ request()->get('to','') }}"/>
+                                        aria-describedby="dateInputGroupPrepend" value="{{ request()->get('to','') }}"/>
                                 </div>
                             </div>
                         </div>

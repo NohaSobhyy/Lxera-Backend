@@ -10,7 +10,7 @@ use App\Http\Controllers\Api\Admin\UserController;
 use App\Http\Controllers\Api\Admin\CategoryController;
 use App\Http\Controllers\Api\Admin\EnrollmentsController;
 use App\Http\Controllers\Api\Admin\CodesController;
-use App\Http\Controllers\Api\Panel\DashboardController;
+use App\Http\Controllers\Api\Admin\DashboardController;
 use App\Http\Controllers\Api\Panel\RequirementsController;
 use App\Http\Controllers\Api\Panel\SalesController;
 use App\Http\Controllers\Api\Panel\UsersController;
@@ -21,6 +21,8 @@ use App\Http\Controllers\Api\Admin\DiscountController;
 use App\Http\Controllers\Api\Admin\DocumentsController;
 use App\Http\Controllers\Api\Admin\InstallmentsController;
 use App\Http\Controllers\Api\Admin\OfflinePaymentsController;
+use App\Http\Controllers\Api\Admin\OrganizationNotificationsController;
+use App\Http\Controllers\Api\Admin\PlanController;
 use App\Http\Controllers\Api\Admin\QuizzesController;
 use App\Http\Controllers\Api\Admin\RoleController;
 use App\Http\Controllers\Api\Admin\SalesController as AdminSalesController;
@@ -33,8 +35,9 @@ Route::prefix('{url_name}')->group(function () {
     Route::middleware(['auth:api'])->group(function () {
         // User Dashboard
         Route::get('/', [DashboardController::class, 'dashboard']);
+        Route::get('/notifications', [OrganizationNotificationsController::class, 'index']);
 
-        // Admission Requirments
+       // Admission Requirments
         Route::group(['prefix' => 'requirements'], function () {
             Route::get('/list', [RequirementsController::class, 'index']);
             Route::get('/{id}/approve', [RequirementsController::class, 'approve']);
@@ -299,6 +302,14 @@ Route::prefix('{url_name}')->group(function () {
                 Route::delete('/{id}', [GroupController::class, 'destroy']);
                 Route::post('/{id}/groupRegistrationPackage', [GroupController::class, 'groupRegistrationPackage']);
             });
+        });
+
+        Route::group(['prefix' => 'plans', 'middleware' => 'can:admin_plans'], function () {
+            Route::get('/', [PlanController::class, 'index']);
+            Route::post('/', [PlanController::class, 'store']);
+            Route::put('/{id}', [PlanController::class, 'update']);
+            Route::delete('/{id}', [PlanController::class, 'destroy']);
+            Route::post('/{id}/active', [PlanController::class, 'makeActive']);
         });
     });
 });

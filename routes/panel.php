@@ -9,6 +9,7 @@ use App\Http\Controllers\Web\LearningPageController;
 | User Panel Routes
 |--------------------------------------------------------------------------
 */
+
 Route::group(['namespace' => 'Web', 'prefix' => 'panel', 'middleware' => ['check_mobile_app', 'impersonate', 'panel', 'share', 'check_maintenance']], function () {
     // new enrollment
     Route::group(['prefix' => 'newEnrollment'], function () {

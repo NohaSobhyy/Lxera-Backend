@@ -221,10 +221,10 @@ class AssignmentHistoryController extends Controller
                     sendNotification('instructor_set_grade', $notifyOptions, $assignmentHistory->student_id);
 
                     // If it's a graduation project, handle specific logic
-                    if ($webinar->type == 'graduation_project' or $webinar->type == 'newGraduation_project'  ) {
-                     
+                    if ($webinar->type == 'graduation_project' or $webinar->type == 'newGraduation_project') {
+
                         $response = $this->getGraduationProjectAssignments($request, $studentId, $webinar);
-                      //return response()->json($response);
+                        //return response()->json($response);
                     }
 
                     return response()->json([
@@ -237,8 +237,6 @@ class AssignmentHistoryController extends Controller
 
         abort(403);
     }
-
-
 
     public function deleteGraduationProject($historyId)
     {
@@ -260,8 +258,6 @@ class AssignmentHistoryController extends Controller
 
         abort(404);
     }
-
-
 
     // public function getGraduationProjectAssignments(Request $request , $userId, $webinar)
     // {
@@ -434,50 +430,52 @@ class AssignmentHistoryController extends Controller
     // }
 
 
-    public function getGraduationProjectAssignments(Request $request, $userId, $webinar) {
+    public function getGraduationProjectAssignments(Request $request, $userId, $webinar)
+    {
+        
         try {
             // Get the associated student
             $user = User::find($userId);
             $student = $user->student;
-          
+
             if (!$student) {
                 return response()->json(['error' => 'Student not found'], 404);
             }
-    
+
             // Retrieve all bundles associated with the given webinar
             $bundleWebinars = BundleWebinar::where('webinar_id', $webinar->id)->get();
-    
+
             if ($bundleWebinars->isEmpty()) {
                 return response()->json(['error' => 'No bundles found for the given webinar'], 404);
             }
-    
+
             // Prepare an array to hold results for each bundle
             $results = [];
-    
+
             // Loop through each BundleWebinar
             foreach ($bundleWebinars as $bundleWebinar) {
                 $bundleId = $bundleWebinar->bundle_id;
-    
+
                 $totalGrade = 0;
                 $totalCount = 0;
-    
+
                 // Retrieve assignments related to the bundle for both types of graduation projects
                 $graduationProjectWebinars = Bundle::find($bundleId)
                     ->bundleWebinars()
-                    ->whereHas('webinar', function ($query) use($webinar) {
+                    ->whereHas('webinar', function ($query) use ($webinar) {
                         $query->whereIn('type', ['graduation_project', 'newGraduation_project'])
-                              ->where('webinar_id', $webinar->id);
+                            ->where('webinar_id', $webinar->id);
                     })
                     ->with('webinar')
                     ->get()
                     ->pluck('webinar.id');
-              
+
                 $assignments = WebinarAssignment::whereIn('webinar_id', $graduationProjectWebinars)
-                    ->with(['assignmentHistory' => function($query) use($student) {
+                    ->with(['assignmentHistory' => function ($query) use ($student) {
                         $query->where('student_id', $student->user_id);
                     }])
                     ->get();
-    
+
                 // Check if we have a new graduation project
                 $isNewGraduationProject = Bundle::find($bundleId)
                     ->bundleWebinars()
@@ -485,7 +483,7 @@ class AssignmentHistoryController extends Controller
                         $query->where('type', 'newGraduation_project');
                     })
                     ->exists();
-    
+
                 if ($isNewGraduationProject) {
                     // New graduation project calculation (sum all grades)
                     $totalStudentGrade = 0;
@@ -508,17 +506,17 @@ class AssignmentHistoryController extends Controller
                     $averageGrade = $totalCount > 0 ? $totalGrade / $totalCount : 0;
                     $gpa = $this->convertGradeToGPA($averageGrade);
                 }
-    
+
                 // Save or update GPA in the BundleStudent model
                 $bundleStudent = BundleStudent::where('bundle_id', $bundleId)
-                                            ->where('student_id', $student->id)
-                                            ->first();
-    
+                    ->where('student_id', $student->id)
+                    ->first();
+
                 if ($bundleStudent) {
                     $bundleStudent->gpa = $gpa;
                     $bundleStudent->save();
                 }
-                 
+
                 // Store results for this bundle
                 $results[] = [
                     'bundle_id' => $bundleId,
@@ -531,7 +529,7 @@ class AssignmentHistoryController extends Controller
                     'gpa' => $gpa
                 ];
             }
-    
+
             // Return the aggregated results for all bundles
             return response()->json($results);
         } catch (\Exception $e) {

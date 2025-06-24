@@ -20,8 +20,8 @@
                 <ul class="nav nav-tabs py-15 d-flex align-items-center justify-content-around" id="tabs-tab" role="tablist">
                     <li class="nav-item">
                         <a class="position-relative font-14 d-flex align-items-center active" id="content-tab"
-                           data-toggle="tab" href="#content" role="tab" aria-controls="content"
-                           aria-selected="true">
+                            data-toggle="tab" href="#content" role="tab" aria-controls="content"
+                            aria-selected="true">
                             <i class="learning-page-tabs-icons mr-5">
                                 @include('web.default.panel.includes.sidebar_icons.webinars')
                             </i>
@@ -31,8 +31,8 @@
 
                     <li class="nav-item">
                         <a class="position-relative font-14 d-flex align-items-center" id="quizzes-tab" data-toggle="tab"
-                           href="#quizzes" role="tab" aria-controls="quizzes"
-                           aria-selected="false">
+                            href="#quizzes" role="tab" aria-controls="quizzes"
+                            aria-selected="false">
                             <i class="learning-page-tabs-icons mr-5">
                                 @include('web.default.panel.includes.sidebar_icons.quizzes')
                             </i>
@@ -41,15 +41,13 @@
                     </li>
 
                     <li class="nav-item">
-                     
 
-                      
             @if ($bundle)
             <!-- Button for when $bundleId is present -->
             @if ($bundle && !empty($bundle->end_date) && $bundle->end_date < time())
             <a class="position-relative font-14 d-flex align-items-center" 
             href="{{ url('/panel/certificates/achievements') }}"  
-              >
+            >
                 <i class="learning-page-tabs-icons mr-5">
                     @include('web.default.panel.includes.sidebar_icons.certificate')
                 </i>
@@ -58,18 +56,18 @@
             @endif
         @else
             <!-- Button for when $bundleId is not present -->
-          
+
         {{-- @dump($group->end_date) --}}
         @if ($group && !empty($group->end_date) && $group->end_date < now())
         <a class="position-relative font-14 d-flex align-items-center"
         href="{{ url('/panel/certificates/achievements') }}" 
-          >
+        >
             <i class="learning-page-tabs-icons mr-5">
                 @include('web.default.panel.includes.sidebar_icons.certificate')
             </i>
             <span class="learning-page-tabs-link-text">الشهاده</span>
         </a>
-           
+
         @endif
         @endif
                     </li>
@@ -77,17 +75,17 @@
 
                 <div class="tab-content h-100" id="nav-tabContent">
                     <div class="pb-20 tab-pane fade show active h-100" id="content" role="tabpanel"
-                         aria-labelledby="content-tab">
+                        aria-labelledby="content-tab">
                         @include('web.default.course.learningPage.components.content_tab.index')
                     </div>
 
                     <div class="pb-20 tab-pane fade  h-100" id="quizzes" role="tabpanel"
-                         aria-labelledby="quizzes-tab">
+                        aria-labelledby="quizzes-tab">
                         @include('web.default.course.learningPage.components.quiz_tab.index')
                     </div>
 
                     <div class="pb-20 tab-pane fade  h-100" id="certificates" role="tabpanel"
-                         aria-labelledby="certificates-tab">
+                        aria-labelledby="certificates-tab">
                         @include('web.default.course.learningPage.components.certificate_tab.index')
                     </div>
                 </div>
@@ -115,8 +113,7 @@
             </a>
         @endif
         @endif --}}
-       
-           
+
         </div>
     </div>
 @endsection

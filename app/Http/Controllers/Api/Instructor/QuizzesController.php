@@ -183,7 +183,6 @@ class QuizzesController extends Controller
         return view(getTemplate() . '.panel.quizzes.create', $data);
     }
 
-
     public function edit($id)
     {
         $user = auth()->user();
@@ -220,7 +219,6 @@ class QuizzesController extends Controller
 
         abort(404);
     }
-
 
     public function start(Request $request, $id)
     {
