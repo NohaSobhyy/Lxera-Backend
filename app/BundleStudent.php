@@ -23,7 +23,7 @@ class BundleStudent extends Pivot
     public function bundle()
     {
         return $this->belongsTo(Bundle::class, "bundle_id");
-    }
+    }   
 
 
     public function class(){

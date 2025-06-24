@@ -103,7 +103,7 @@ class BundlesController extends Controller
 
         if ($user->isUser()) {
             abort(404);
-        }
+        }   
 
         $query = Bundle::where(function ($query) use ($user) {
             $query->where('bundles.teacher_id', $user->id)
@@ -1332,7 +1332,7 @@ class BundlesController extends Controller
         if (!$user->isTeacher() and !$user->isOrganization() and !$bundle->isPartnerTeacher($user->id)) {
             abort(404);
         }
-
+        dd($user->id);
         $bundle = Bundle::where('id', $id)
             ->where(function ($query) use ($user) {
                 $query->where('creator_id', $user->id)

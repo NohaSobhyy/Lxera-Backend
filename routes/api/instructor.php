@@ -1,10 +1,13 @@
 <?php
 
+
 use App\Http\Controllers\Api\Instructor\AssignmentController;
 use App\Http\Controllers\Api\Instructor\DashboardController;
 use App\Http\Controllers\Api\Instructor\LearningPageController;
 use App\Http\Controllers\Api\Instructor\QuizzesController;
 use App\Http\Controllers\Api\Instructor\WebinarsController;
+use App\Http\Controllers\Api\Panel\NotificationsController;
+use App\Http\Controllers\Api\Instructor\EmployeeProgressController;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware(['auth:api'])->group(function () {
@@ -34,6 +37,24 @@ Route::middleware(['auth:api'])->group(function () {
                 Route::delete('/{id}', [QuizzesController::class, 'destroy']);
             });
         });
+      Route::group(["prefix"=>'/panel'], function () {
+
+
+    /***** bundles *****/
+    Route::get('bundles/{bundle}/export', ['uses' => 'BundleController@export'])->middleware('api.level-access:teacher');
+    Route::apiResource('bundles', BundleController::class)->middleware('api.level-access:teacher');
+    Route::apiResource('bundles.webinars', BundleWebinarController::class)->middleware('api.level-access:teacher')->only(['index']);
+
+    Route::get('employee_progress',[EmployeeProgressController::class,'index']);
+    
+    Route::delete('/{bundle_id}/{student_id}/remove',[EmployeeProgressController::class,'destroy']);
+    Route::post('/add_employee',[EmployeeProgressController::class,'store']);
+
+    Route::group(['prefix'=>'notifications'],function(){
+        Route::get('/',[NotificationsController::class,'list']);
+        Route::post('/{id}/seen', [NotificationsController::class, 'seen']);
+    });
+
 
 
         /***** bundles *****/
