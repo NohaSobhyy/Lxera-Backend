@@ -49,9 +49,6 @@ class DashboardController extends Controller
             ]
         ], 200);
 
-
-
-
         //     $nextBadge = $user->getBadges(true, true);
 
         //     $data = [

@@ -22,6 +22,7 @@ Route::middleware(['auth:api'])->group(function () {
                 Route::delete('/{id}', [AssignmentController::class, 'destroy']);
                 Route::get('/{id}/students', [AssignmentController::class, 'submmision']);
                 Route::post('/histories/{assignment_history}/rate', [AssignmentController::class, 'setGrade']);
+                Route::post('/{assignmentId}/history/{historyId}/message', [AssignmentController::class, 'storeMessage']);
             });
             Route::get('/', [WebinarsController::class, 'index']);
             Route::get('/{id}', [WebinarsController::class, 'showSections']);

@@ -21,6 +21,7 @@ use App\Http\Controllers\Api\Admin\DiscountController;
 use App\Http\Controllers\Api\Admin\DocumentsController;
 use App\Http\Controllers\Api\Admin\InstallmentsController;
 use App\Http\Controllers\Api\Admin\OfflinePaymentsController;
+use App\Http\Controllers\Api\Admin\OrganizationNotificationsController;
 use App\Http\Controllers\Api\Admin\PlanController;
 use App\Http\Controllers\Api\Admin\QuizzesController;
 use App\Http\Controllers\Api\Admin\RoleController;
@@ -34,8 +35,9 @@ Route::prefix('{url_name}')->group(function () {
     Route::middleware(['auth:api'])->group(function () {
         // User Dashboard
         Route::get('/', [DashboardController::class, 'dashboard']);
+        Route::get('/notifications', [OrganizationNotificationsController::class, 'index']);
 
-        // Admission Requirments
+       // Admission Requirments
         Route::group(['prefix' => 'requirements'], function () {
             Route::get('/list', [RequirementsController::class, 'index']);
             Route::get('/{id}/approve', [RequirementsController::class, 'approve']);
