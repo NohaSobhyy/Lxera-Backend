@@ -379,7 +379,8 @@ class AssignmentController extends Controller
         }
         $user = auth()->user();
 
-        $assignment = WebinarAssignment::where('id', $assignmentId)->first();
+        $assignment = WebinarAssignment::findOrFail($assignmentId);
+
 
         if (!empty($assignment)) {
             $webinar = $assignment->webinar;
@@ -388,46 +389,37 @@ class AssignmentController extends Controller
                 $studentId = $request->get('student_id');
                 $assignmentHistory = $this->getAssignmentHistory($webinar, $assignment, $user, $studentId);
 
-                if (!empty($assignmentHistory) and $historyId == $assignmentHistory->id) {
+                    if (!empty($assignmentHistory) and $historyId == $assignmentHistory->id) {
 
-                    if ($user->id != $assignment->creator_id) {
-                        $submissionTimes = $assignmentHistory->messages
-                            ->where('sender_id', $user->id)
-                            ->whereNotNull('file_path')
-                            ->count();
-                        $deadline = $this->getAssignmentDeadline($assignment, $user);
+                        if ($user->id != $assignment->creator_id) {
+                            $submissionTimes = $assignmentHistory->messages
+                                ->where('sender_id', $user->id)
+                                ->whereNotNull('file_path')
+                                ->count();
+                            $deadline = $this->getAssignmentDeadline($assignment, $user);
 
-                        if (!$deadline or (!empty($assignment->attempts) and $submissionTimes >= $assignment->attempts)) {
-                            $toastData = [
-                                'title' => !$deadline ? trans('update.assignment_deadline_error_title') : trans('update.assignment_submission_error_title'),
-                                'msg' => !$deadline ? trans('update.assignment_deadline_error_desc') : trans('update.assignment_submission_error_desc'),
-                            ];
+                            if (!$deadline or (!empty($assignment->attempts) and $submissionTimes >= $assignment->attempts)) {
+                                $toastData = [
+                                    'title' => !$deadline ? trans('update.assignment_deadline_error_title') : trans('update.assignment_submission_error_title'),
+                                    'msg' => !$deadline ? trans('update.assignment_deadline_error_desc') : trans('update.assignment_submission_error_desc'),
+                                ];
 
-                            return response([
-                                'code' => 401,
-                                'errors' => $toastData,
-                            ]);
+                                return response([
+                                    'code' => 401,
+                                    'errors' => $toastData,
+                                ]);
+                            }
                         }
-                    }
 
-                    $data = $request->all();
+                        $data = $request->all();
 
-                    $rules = [
-                        'file_title' => 'required|max:255',
-                        // 'file_path' => 'required|mimes:psd,rar,png,jpg,jpeg,doc,docx,pdf,ai,indd',
-                    ];
-
-
-                    $validator = Validator::make($data, $rules);
-
-                    $path = public_path($data['file_path']);
-                    if ($request->hasFile('file_path')) {
-                        $file = $request->file('file_path');
-
-                        // Continue with file validation and upload
                         $rules = [
-                            'file_path' => 'required|mimes:psd,rar,png,jpg,jpeg,doc,docx,pdf,ai,indd',
+                            'file_title' => 'required|max:255',
                         ];
+
+                        if ($request->hasFile('file_path')) {
+                            $rules['file_path'] = 'required|mimes:psd,rar,png,jpg,jpeg,doc,docx,pdf,ai,indd';
+                        }
                         $validator = Validator::make($data, $rules);
 
                         if ($validator->fails()) {
@@ -436,60 +428,50 @@ class AssignmentController extends Controller
                                 'errors' => $validator->errors(),
                             ], 422);
                         }
-                    }
 
+                        $path = public_path($data['file_path']);
+                        if (!File::exists($path)) {
+                            return response([
+                                'code' => 422,
+                                'errors' => [
+                                    'file_path' => ['ملف غير صحيح']
+                                ],
+                            ], 422);
+                        }
 
-                    if ($validator->fails()) {
-
-
-                        return response([
-                            'code' => 422,
-                            'errors' => $validator->errors(),
-                        ], 422);
-                    }
-
-                    if (!File::exists($path)) {
-                        return response([
-                            'code' => 422,
-                            'errors' => [
-                                'file_path' => ['ملف غير صحيح']
-                            ],
-                        ], 422);
-                    }
-
-                    WebinarAssignmentHistoryMessage::create([
-                        'assignment_history_id' => $assignmentHistory->id,
-                        'sender_id' => $user->id,
-                        'message' => !empty($data['message']) ? $data['message'] : null,
-                        'file_title' => $data['file_title'] ?? null,
-                        'file_path' => $data['file_path'] ?? null,
-                        'created_at' => time(),
-                    ]);
-
-                    if ($assignmentHistory->status == WebinarAssignmentHistory::$notSubmitted) {
-                        $assignmentHistory->update([
-                            'status' => WebinarAssignmentHistory::$pending
+                        WebinarAssignmentHistoryMessage::create([
+                            'assignment_history_id' => $assignmentHistory->id,
+                            'sender_id' => $user->id,
+                            'message' => !empty($data['message']) ? $data['message'] : null,
+                            'file_title' => $data['file_title'] ?? null,
+                            'file_path' => $data['file_path'] ?? null,
+                            'created_at' => time(),
                         ]);
+
+                        if ($assignmentHistory->status == WebinarAssignmentHistory::$notSubmitted) {
+                            $assignmentHistory->update([
+                                'status' => WebinarAssignmentHistory::$pending
+                            ]);
+                        }
+
+                        $notifyOptions = [
+                            '[instructor.name]' => $assignmentHistory->instructor->full_name,
+                            '[c.title]' => $webinar->title,
+                            '[student.name]' => $assignmentHistory->student->full_name,
+                            //'[assignment_grade]' => $assignmentHistory->grade,
+                        ];
+
+                        if ($user->id == $assignment->creator_id) {
+                            sendNotification('instructor_send_message', $notifyOptions, $assignmentHistory->student_id);
+                        } else {
+                            sendNotification('student_send_message', $notifyOptions, $assignmentHistory->instructor_id);
+                        }
+
+                        return response()->json([
+                            'status' => 'success',
+                            'msg' => 'Message send successfully'
+                        ], 200);
                     }
-
-                    $notifyOptions = [
-                        '[instructor.name]' => $assignmentHistory->instructor->full_name,
-                        '[c.title]' => $webinar->title,
-                        '[student.name]' => $assignmentHistory->student->full_name,
-                        //'[assignment_grade]' => $assignmentHistory->grade,
-                    ];
-
-                    if ($user->id == $assignment->creator_id) {
-                        sendNotification('instructor_send_message', $notifyOptions, $assignmentHistory->student_id);
-                    } else {
-                        sendNotification('student_send_message', $notifyOptions, $assignmentHistory->instructor_id);
-                    }
-
-                    return response()->json([
-                        'status' => 'success',
-                        'msg' => 'Message send successfully'
-                    ], 200);
-                }
             }
         }
 
