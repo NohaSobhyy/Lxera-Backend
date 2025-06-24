@@ -12,7 +12,7 @@ use Illuminate\Support\Facades\Route;
 
 Route::middleware(['auth:api'])->group(function () {
     Route::prefix('{url_name}')->group(function () {
-
+        
         // Dashboard
         Route::get('/', [DashboardController::class, 'dashboard'])->middleware('can:show_panel');
 
@@ -37,23 +37,18 @@ Route::middleware(['auth:api'])->group(function () {
                 Route::delete('/{id}', [QuizzesController::class, 'destroy']);
             });
         });
-      Route::group(["prefix"=>'/panel'], function () {
 
 
-    /***** bundles *****/
-    Route::get('bundles/{bundle}/export', ['uses' => 'BundleController@export'])->middleware('api.level-access:teacher');
-    Route::apiResource('bundles', BundleController::class)->middleware('api.level-access:teacher');
-    Route::apiResource('bundles.webinars', BundleWebinarController::class)->middleware('api.level-access:teacher')->only(['index']);
+        /***** bundles *****/
+        Route::get('bundles/{bundle}/export', ['uses' => 'BundleController@export'])->middleware('api.level-access:teacher');
+        Route::apiResource('bundles', BundleController::class)->middleware('api.level-access:teacher');
+        Route::apiResource('bundles.webinars', BundleWebinarController::class)->middleware('api.level-access:teacher')->only(['index']);
 
-    Route::get('employee_progress',[EmployeeProgressController::class,'index']);
-    
-    Route::delete('/{bundle_id}/{student_id}/remove',[EmployeeProgressController::class,'destroy']);
-    Route::post('/add_employee',[EmployeeProgressController::class,'store']);
+        Route::get('employee_progress', [EmployeeProgressController::class, 'index']);
 
-    Route::group(['prefix'=>'notifications'],function(){
-        Route::get('/',[NotificationsController::class,'list']);
-        Route::post('/{id}/seen', [NotificationsController::class, 'seen']);
-    });
+        Route::delete('/{bundle_id}/{student_id}/remove', [EmployeeProgressController::class, 'destroy']);
+        Route::post('/add_employee', [EmployeeProgressController::class, 'store']);
+
 
 
 
@@ -87,5 +82,4 @@ Route::middleware(['auth:api'])->group(function () {
             Route::get('/learning/{id}/{bundle?}', [LearningPageController::class, 'index']);
         });
     });
-});
 });

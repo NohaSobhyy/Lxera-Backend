@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\Panel;
 
 use App\Http\Controllers\Api\Controller;
+use App\Models\Api\Organization;
 use App\Models\Notification;
 use App\Models\NotificationStatus;
 use Illuminate\Http\Request;
@@ -41,8 +42,10 @@ class NotificationsController extends Controller
         ];
     }
 
-    public function seen($id)
+    public function seen($url_name, $id)
     {
+        $org= Organization::where('url_name', $url_name)->first();
+
         $user = apiAuth();
         $notification = Notification::where('id', $id)->first();
         if (!$notification) {

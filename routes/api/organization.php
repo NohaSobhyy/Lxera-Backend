@@ -29,15 +29,20 @@ use App\Http\Controllers\Api\Admin\SalesController as AdminSalesController;
 use App\Http\Controllers\Api\Admin\SupportsController;
 use App\Http\Controllers\Api\Admin\UsersNotAccessToContentController;
 use App\Http\Controllers\Api\Admin\WebinarCertificateController;
+use App\Http\Controllers\Api\Panel\NotificationsController;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('{url_name}')->group(function () {
     Route::middleware(['auth:api'])->group(function () {
+
         // User Dashboard
         Route::get('/', [DashboardController::class, 'dashboard']);
-        Route::get('/notifications', [OrganizationNotificationsController::class, 'index']);
+        Route::group(['prefix' => 'notifications'], function () {
+            Route::get('/', [NotificationsController::class, 'list']);
+            Route::post('/{id}/seen', [NotificationsController::class, 'seen'])->name('notifications.seen');
+        });
 
-       // Admission Requirments
+        // Admission Requirments
         Route::group(['prefix' => 'requirements'], function () {
             Route::get('/list', [RequirementsController::class, 'index']);
             Route::get('/{id}/approve', [RequirementsController::class, 'approve']);
