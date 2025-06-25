@@ -48,6 +48,7 @@ use App\Imports\StudentImport;
 use App\Exports\ProgramCodeExport;
 use App\Imports\SendUserMail;
 use App\Models\Api\Organization;
+use App\Models\Api\Plan;
 use Illuminate\Support\Facades\Validator;
 
 class UserController extends Controller
@@ -650,6 +651,17 @@ class UserController extends Controller
 
     public function store(Request $request)
     {
+
+        $usersCount = User::count();
+
+        $plan = Plan::first();
+
+        if ($usersCount >= $plan->max_users) {
+            return response()->json([
+                'msg' => 'Sorry, you have reached the maximum number of users allowed for your subscription plan.'
+            ], 403);
+        }
+
         $this->authorize('admin_users_create');
         $data = $request->all();
 

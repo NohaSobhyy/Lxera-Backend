@@ -36,6 +36,7 @@ use App\Models\WebinarPartnerTeacher;
 use App\User;
 use App\Exports\StudentsWebinarExport;
 use App\Models\Api\Organization;
+use App\Models\Api\Plan;
 use App\Models\Webinar;
 use App\Student;
 use Illuminate\Http\Request;
@@ -323,6 +324,15 @@ class WebinarController extends Controller
 
     public function store($url_name, Request $request)
     {
+        $webinarsCount = Webinar::count();
+
+        $plan = Plan::first();
+
+        if ($webinarsCount >= $plan->max_webinars) {
+            return response()->json([
+                'msg' => 'Sorry, you have reached the maximum number of ewbinars allowed for your subscription plan.'
+            ], 403);
+        }
         $organization = Organization::where('url_name', $url_name);
         if (!$organization) {
             return response()->json(['message' => 'Organization not found'], 404);
@@ -517,9 +527,9 @@ class WebinarController extends Controller
         }
 
         if (empty($data['slug'])) {
-            $data['slug'] = !empty($data['title']) 
-            ? Webinar::makeSlug($data['title']) . '_' . Str::random(5)
-            :$webinar->slug;
+            $data['slug'] = !empty($data['title'])
+                ? Webinar::makeSlug($data['title']) . '_' . Str::random(5)
+                : $webinar->slug;
         }
 
         $data['status'] = $publish ? Webinar::$active : ($reject ? Webinar::$inactive : ($isDraft ? Webinar::$isDraft : Webinar::$pending));
@@ -1259,7 +1269,7 @@ class WebinarController extends Controller
 
         $webinars = Webinar::where('unattached', 1)->get();
 
-        $webinarData =[];
+        $webinarData = [];
         foreach ($webinars as $webinar) {
             $webinarData[] = [
                 'webinarsTitle' => $webinar->title,
