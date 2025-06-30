@@ -29,6 +29,7 @@ use App\Http\Controllers\Api\Admin\SalesController as AdminSalesController;
 use App\Http\Controllers\Api\Admin\SupportsController;
 use App\Http\Controllers\Api\Admin\UsersNotAccessToContentController;
 use App\Http\Controllers\Api\Admin\WebinarCertificateController;
+use App\Http\Controllers\Api\Instructor\EmployeeProgressController;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('{url_name}')->group(function () {
@@ -37,7 +38,7 @@ Route::prefix('{url_name}')->group(function () {
         Route::get('/', [DashboardController::class, 'dashboard']);
         Route::get('/notifications', [OrganizationNotificationsController::class, 'index']);
 
-       // Admission Requirments
+        // Admission Requirments
         Route::group(['prefix' => 'requirements'], function () {
             Route::get('/list', [RequirementsController::class, 'index']);
             Route::get('/{id}/approve', [RequirementsController::class, 'approve']);
@@ -197,7 +198,6 @@ Route::prefix('{url_name}')->group(function () {
                 Route::get('/', [DocumentsController::class, 'index']);
                 Route::post('/', [DocumentsController::class, 'store']);
             });
-
             // Sales list
             Route::prefix('sales')->group(function () {
                 Route::get('/', [AdminSalesController::class, 'index']);
@@ -304,12 +304,18 @@ Route::prefix('{url_name}')->group(function () {
             });
         });
 
-        Route::group(['prefix' => 'plans', 'middleware' => 'can:admin_plans'], function () {
+        Route::group(['prefix' => 'plans'], function () {
             Route::get('/', [PlanController::class, 'index']);
             Route::post('/', [PlanController::class, 'store']);
             Route::put('/{id}', [PlanController::class, 'update']);
             Route::delete('/{id}', [PlanController::class, 'destroy']);
             Route::post('/{id}/active', [PlanController::class, 'makeActive']);
         });
+
+
+        Route::get('employee_progress', [EmployeeProgressController::class, 'index']);
+        Route::delete('/{bundle_id}/{student_id}/remove', [EmployeeProgressController::class, 'destroy']);
+        Route::post('/add_employee', [EmployeeProgressController::class, 'store']);
+        
     });
 });
