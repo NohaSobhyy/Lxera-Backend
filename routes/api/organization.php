@@ -20,6 +20,7 @@ use App\Http\Controllers\Api\Admin\DiscountController;
 use App\Http\Controllers\Api\Admin\DocumentsController;
 use App\Http\Controllers\Api\Admin\InstallmentsController;
 use App\Http\Controllers\Api\Admin\OfflinePaymentsController;
+use App\Http\Controllers\Api\Admin\OrganizationController;
 use App\Http\Controllers\Api\Admin\PlanController;
 use App\Http\Controllers\Api\Admin\QuizzesController;
 use App\Http\Controllers\Api\Admin\RoleController;
@@ -333,5 +334,7 @@ Route::prefix('{url_name}')->group(function () {
             Route::put('/{id}', [supportsQuestionController::class, 'update']);
             Route::delete('/{id}', [supportsQuestionController::class, 'destroy']);
         });
+
+        Route::get('/profile', [OrganizationController::class, 'index']);
     });
 });
