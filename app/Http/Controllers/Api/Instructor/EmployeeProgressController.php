@@ -14,7 +14,7 @@ class EmployeeProgressController extends Controller
     {
         $user = apiAuth();
 
-        $bundles = Bundle::with('bundleStudents.student.user') // eager load users
+        $bundles = Bundle::with('bundleStudents.student.user') 
             ->where('teacher_id', $user->id)
             ->get()
             ->map(function ($bundle) {
@@ -49,7 +49,7 @@ class EmployeeProgressController extends Controller
         ]);
     }
 
-    public function destroy($bundle_id, $student_id)
+    public function destroy($org,$bundle_id, $student_id)
     {
         $user = apiAuth();
         if (BundleStudent::where('bundle_id', $bundle_id)->where('student_id', $student_id)->delete()) {
@@ -75,6 +75,10 @@ class EmployeeProgressController extends Controller
             if ($bundlestudent) {
                 return response()->json([
                     'message' => 'Student added successfully to the bundle.',
+                ]);
+            }else{
+                return response()->json([
+                    'message' => 'Student Already exists in the bundle.',
                 ]);
             }
         }
