@@ -3,25 +3,13 @@
 namespace App\Http\Controllers\Api\Panel;
 
 use App\Http\Controllers\Api\Controller;
+use App\Models\Api\Organization;
 use App\Models\Notification;
 use App\Models\NotificationStatus;
 use Illuminate\Http\Request;
 
 class NotificationsController extends Controller
 {
-    public function list(Request $request)
-    {
-        $status = $request->input('status');
-        if ($status == 'unread') {
-            $notifications = $this->unRead();
-        } elseif ($status == 'read') {
-            $notifications = $this->read();
-        } else {
-            $notifications = $this->all();
-        }
-        $notifications = self::brief($notifications);
-        return apiResponse2(1, 'retrieved', trans('public.retrieved'), $notifications);
-    }
 
     public static function brief($notifications)
     {
@@ -41,8 +29,10 @@ class NotificationsController extends Controller
         ];
     }
 
-    public function seen($id)
+    public function seen($url_name, $id)
     {
+        $org = Organization::where('url_name', $url_name)->first();
+
         $user = apiAuth();
         $notification = Notification::where('id', $id)->first();
         if (!$notification) {
@@ -130,5 +120,28 @@ class NotificationsController extends Controller
             ->orderBy('count', 'asc')
             ->orderBy('notifications.created_at', 'DESC')
             ->get();*/
+    }
+
+    public function list(Request $request)
+    {
+        $status = $request->input('status');
+        $type = $request->input('type');
+
+        if ($status == 'unread') {
+            $notifications = $this->unRead();
+        } elseif ($status == 'read') {
+            $notifications = $this->read();
+        } else {
+            $notifications = $this->all();
+        }
+
+        // Apply type filter if present
+        if ($type === 'organizations') {
+            $notifications = $notifications->where('type', 'organizations');
+        }
+
+        $notifications = self::brief($notifications);
+
+        return apiResponse2(1, 'retrieved', trans('public.retrieved'), $notifications);
     }
 }

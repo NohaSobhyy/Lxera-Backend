@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\Api\Organization;
 use App\Models\Role;
 use App\Models\Support;
 use App\Models\SupportConversation;
@@ -14,98 +15,38 @@ use Illuminate\Support\Facades\DB;
 
 class SupportsController extends Controller
 {
-    public function index(Request $request)
+    public function index()
     {
         $this->authorize('admin_supports_list');
 
-        $query = Support::select('*',DB::raw("case
-            when status = 'open' then 'a'
-            when status = 'replied' then 'a'
-            when status = 'supporter_replied' then 'b'
-            when status = 'close' then 'c'
-            end as status_order
-        "));
-
-        if (!empty($request->get('type')) and $request->get('type') == 'course_conversations') {
-            $query->whereNotNull('webinar_id')
-                ->with([
-                    'webinar' => function ($qu) {
-                        $qu->with([
-                            'teacher' => function ($qu) {
-                                $qu->select('id', 'full_name');
-                            }
-                        ]);
-                    }
-                ]);
-        } else {
-            $query->whereNotNull('department_id');
-        }
-
-        $totalConversations = deepClone($query)->count();
-        $openConversationsCount = deepClone($query)->where('status', '!=', 'close')->count();
-        $closeConversationsCount = deepClone($query)->where('status', 'close')->count();
-        $classesWithSupport = 0;
-        $pendingReplySupports = 0;
-
-        if (!empty($request->get('type')) and $request->get('type') == 'course_conversations') {
-            $classesWithSupport = Webinar::where('support', true)
-                ->where('status', 'active')
-                ->count();
-        } else {
-            $pendingReplySupports = deepClone($query)->whereIn('status', ['open', 'replied'])->count();
-        }
-
-        $query = $this->handleFilters($request, $query);
-
-        $supports = $query->orderBy('status_order', 'asc')
+        $supports = Support::with(['conversations', 'user', 'bundle', 'webinar'])
             ->orderBy('created_at', 'desc')
-            ->with([
-                'department',
-                'user' => function ($qu) {
-                    $qu->select('id', 'full_name', 'role_name');
-                }
-            ])->paginate(10);
+            ->get();
 
-        $departments = SupportDepartment::all();
-        $roles = Role::all();
+        // $totalConversations = deepClone($query)->count();
+        // $openConversationsCount = deepClone($query)->where('status', '!=', 'close')->count();
+        // $closeConversationsCount = deepClone($query)->where('status', 'close')->count();
+        // $pendingReplySupports = deepClone($query)->whereIn('status', ['open', 'replied'])->count();
 
-        $data = [
+        // $query = $this->handleFilters($request, $query);
+
+        // $supports = $query->orderBy('status_order', 'asc')
+        //     ->orderBy('created_at', 'desc')
+        //     ->with(['user:id,full_name,role_name'])
+        //     ->get();
+
+        // $departments = SupportDepartment::all();
+
+        return response()->json([
             'pageTitle' => trans('admin/pages/users.supports'),
             'supports' => $supports,
-            'totalConversations' => $totalConversations,
-            'pendingReplySupports' => $pendingReplySupports,
-            'openConversationsCount' => $openConversationsCount,
-            'closeConversationsCount' => $closeConversationsCount,
-            'classesWithSupport' => $classesWithSupport,
-            'departments' => $departments,
-            'roles' => $roles,
-        ];
-
-        if (!empty($request->get('type')) and $request->get('type') == 'course_conversations') {
-            $data['pageTitle'] = trans('admin/main.classes_conversations');
-            $teacher_ids = $request->get('teacher_ids');
-            $student_ids = $request->get('student_ids');
-            $webinar_ids = $request->get('webinar_ids');
-
-            if (!empty($teacher_ids)) {
-                $data['teachers'] = User::select('id', 'full_name')
-                    ->whereIn('id', $teacher_ids)->get();
-            }
-
-            if (!empty($student_ids)) {
-                $data['students'] = User::select('id', 'full_name')
-                    ->whereIn('id', $student_ids)->get();
-            }
-
-            if (!empty($webinar_ids)) {
-                $data['webinars'] = Webinar::select('id')
-                    ->whereIn('id', $webinar_ids)->get();
-            }
-
-            return view('admin.supports.course_conversations_lists', $data);
-        }
-
-        return view('admin.supports.lists', $data);
+            // 'totalConversations' => $totalConversations,
+            // 'pendingReplySupports' => $pendingReplySupports,
+            // 'openConversationsCount' => $openConversationsCount,
+            // 'closeConversationsCount' => $closeConversationsCount,
+            // 'classesWithSupport' => 0,
+            // 'departments' => $departments,
+        ], 200);
     }
 
     private function handleFilters($request, $query)
@@ -207,7 +148,7 @@ class SupportsController extends Controller
 
         $this->validate($request, [
             'title' => 'required|min:2',
-            'department_id' => 'nullable|exists:support_departments,id',
+            // 'department_id' => 'nullable|exists:support_departments,id',
             'user_id' => 'required|exists:users,id',
             'message' => 'required',
         ]);
@@ -216,9 +157,11 @@ class SupportsController extends Controller
 
         $support = Support::create([
             'user_id' => $data['user_id'],
-            'department_id' => $data['department_id'] ?? 8,
+            // 'department_id' => $data['department_id'] ?? 8,
             'title' => $data['title'],
             'status' => 'open',
+            'webinar_id' => $data['webinar_id'] ?? null,
+            'bundle_id' => $data['bundle_id'] ?? null,
             'created_at' => time(),
             'updated_at' => time(),
         ]);
@@ -233,8 +176,8 @@ class SupportsController extends Controller
 
         return response()->json([
             'status' => true,
-            'message' => 'Message was sent successfully'
-        ]);
+            'message' => 'Tickect Created successfully'
+        ], 201);
     }
 
     public function edit($id)
@@ -257,24 +200,29 @@ class SupportsController extends Controller
             'support' => $support,
         ];
 
-        return view('admin.supports.create', $data);
+        return response()->json($data);
     }
 
-    public function update(Request $request, $id)
+    public function update($url_name, Request $request, $id)
     {
+        $organization = Organization::where('url_name', $url_name)->first();
+        if (!$organization) {
+            return response()->json(['message' => 'Organization not found'], 404);
+        }
+
         $this->authorize('admin_supports_reply');
 
         $this->validate($request, [
-            'title' => 'required|min:2',
-            'department_id' => 'required|exists:support_departments,id',
-            'user_id' => 'required|exists:users,id',
-            'message' => 'required',
+            'title' => 'sometimes|min:2',
+            // 'department_id' => 'sometimes|exists:support_departments,id',
+            'user_id' => 'sometimes|exists:users,id',
+            'message' => 'sometimes',
+            'status' => 'sometimes|in:open,close,replied,supporter_replied ',
         ]);
 
         $data = $request->all();
 
         $support = Support::where('id', $id)
-            ->whereNotNull('department_id')
             ->first();
 
         if (empty($support)) {
@@ -282,23 +230,28 @@ class SupportsController extends Controller
         }
 
         $support->update([
-            'user_id' => $data['user_id'],
-            'department_id' => $data['department_id'],
-            'title' => $data['title'],
-            'status' => 'open',
+            'user_id' => $data['user_id'] ?? $support->user_id,
+            // 'department_id' => $data['department_id'] ?? $support->department_id,
+            'title' => $data['title'] ?? $support->title,
+            'status' => $data['status'] ?? $support->status,
             'updated_at' => time(),
         ]);
 
-        return redirect(getAdminPanelUrl().'/supports');
+        return response()->json([
+            'status' => 'success',
+            'msg' => 'Ticket Updated Successfully'
+        ]);
     }
 
-    public function delete($id)
+    public function delete($url_name, $id)
     {
+        $organization = Organization::where('url_name', $url_name)->first();
+        if (!$organization) {
+            return response()->json(['message' => 'Organization not found'], 404);
+        }
         $this->authorize('admin_supports_delete');
 
-        $support = Support::where('id', $id)
-            ->whereNotNull('department_id')
-            ->first();
+        $support = Support::where('id', $id)->first();
 
         if (empty($support)) {
             abort(404);
@@ -306,7 +259,10 @@ class SupportsController extends Controller
 
         $support->delete();
 
-        return redirect(getAdminPanelUrl().'/supports');
+        return response()->json([
+            'status' => 'success',
+            'msg' => 'Ticket Deleted Successfully'
+        ]);
     }
 
     public function conversationClose($id)
@@ -325,7 +281,7 @@ class SupportsController extends Controller
             'updated_at' => time()
         ]);
 
-        return redirect(getAdminPanelUrl().'/supports/' . $support->id . '/conversation');
+        return redirect(getAdminPanelUrl() . '/supports/' . $support->id . '/conversation');
     }
 
     public function conversation($id)
@@ -394,6 +350,6 @@ class SupportsController extends Controller
             'created_at' => time(),
         ]);
 
-        return redirect(getAdminPanelUrl().'/supports/' . $support->id . '/conversation');
+        return redirect(getAdminPanelUrl() . '/supports/' . $support->id . '/conversation');
     }
 }

@@ -6,7 +6,9 @@ use App\BundleStudent;
 use App\Http\Controllers\Controller;
 use App\Http\Controllers\Panel\WebinarStatisticController;
 use App\Mail\SendNotifications;
+
 use App\Models\Api\Organization;
+use App\Models\Api\Plan;
 use App\Models\CertificateTemplate;
 use App\Models\StudyClass;
 use App\Models\Bundle;
@@ -245,6 +247,16 @@ class BundleController extends Controller
 
     public function store(Request $request)
     {
+        $bundlesCount = Bundle::count();
+
+        $plan = Plan::first();
+
+        if ($bundlesCount >= $plan->max_bundles) {
+            return response()->json([
+                'msg' => 'Sorry, you have reached the maximum number of bundles allowed for your subscription plan.'
+            ], 403);
+        }
+
         $this->authorize('admin_bundles_create');
         $type = $request->get('type', 'program');
         $rules = [

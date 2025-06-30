@@ -34,7 +34,7 @@ class DashboardController extends Controller
         $bundlesCount = Bundle::count();
         $activeWebinarsCount = Webinar::where('status', 'active')->count();
         $webinarsCount = Webinar::count();
-        $employeesCount = User::where('organ_id', $organization->id)->count();
+        $employeesCount = User::count();
         $certificatesCount = Certificate::count();
 
         return response()->json([

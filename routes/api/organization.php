@@ -1,6 +1,5 @@
 <?php
 
-use App\Http\Controllers\Admin\AgoraHistoryController;
 use App\Http\Controllers\Api\Admin\GroupController;
 use App\Http\Controllers\Api\Admin\AssignmentsController;
 use App\Http\Controllers\Api\Admin\BundleController;
@@ -21,22 +20,30 @@ use App\Http\Controllers\Api\Admin\DiscountController;
 use App\Http\Controllers\Api\Admin\DocumentsController;
 use App\Http\Controllers\Api\Admin\InstallmentsController;
 use App\Http\Controllers\Api\Admin\OfflinePaymentsController;
-use App\Http\Controllers\Api\Admin\OrganizationNotificationsController;
 use App\Http\Controllers\Api\Admin\PlanController;
 use App\Http\Controllers\Api\Admin\QuizzesController;
 use App\Http\Controllers\Api\Admin\RoleController;
 use App\Http\Controllers\Api\Admin\SalesController as AdminSalesController;
 use App\Http\Controllers\Api\Admin\SupportsController;
+use App\Http\Controllers\Api\Admin\SupportsQuestionController;
 use App\Http\Controllers\Api\Admin\UsersNotAccessToContentController;
 use App\Http\Controllers\Api\Admin\WebinarCertificateController;
+
 use App\Http\Controllers\Api\Instructor\EmployeeProgressController;
+
+use App\Http\Controllers\Api\Panel\NotificationsController;
+
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('{url_name}')->group(function () {
     Route::middleware(['auth:api'])->group(function () {
+
         // User Dashboard
         Route::get('/', [DashboardController::class, 'dashboard']);
-        Route::get('/notifications', [OrganizationNotificationsController::class, 'index']);
+        Route::group(['prefix' => 'notifications'], function () {
+            Route::get('/', [NotificationsController::class, 'list']);
+            Route::post('/{id}/seen', [NotificationsController::class, 'seen'])->name('notifications.seen');
+        });
 
         // Admission Requirments
         Route::group(['prefix' => 'requirements'], function () {
@@ -304,7 +311,9 @@ Route::prefix('{url_name}')->group(function () {
             });
         });
 
+
         Route::group(['prefix' => 'plans'], function () {
+
             Route::get('/', [PlanController::class, 'index']);
             Route::post('/', [PlanController::class, 'store']);
             Route::put('/{id}', [PlanController::class, 'update']);
@@ -312,10 +321,27 @@ Route::prefix('{url_name}')->group(function () {
             Route::post('/{id}/active', [PlanController::class, 'makeActive']);
         });
 
-
         Route::get('employee_progress', [EmployeeProgressController::class, 'index']);
         Route::delete('/{bundle_id}/{student_id}/remove', [EmployeeProgressController::class, 'destroy']);
         Route::post('/add_employee', [EmployeeProgressController::class, 'store']);
         
+
+        // Support
+        Route::group(['prefix' => 'supports'], function () {
+            Route::get('/', [SupportsController::class, 'index']);
+            Route::post('/', [SupportsController::class, 'store']);
+            Route::put('/{id}', [SupportsController::class, 'update']);
+            Route::delete('/{id}', [SupportsController::class, 'delete']);
+        });
+
+        // Supports Questions
+        Route::group(['prefix' => 'supports-questions'], function () {
+            Route::get('/', [supportsQuestionController::class, 'index']);
+            Route::get('/{id}', [supportsQuestionController::class, 'show']);
+            Route::post('/', [supportsQuestionController::class, 'store']);
+            Route::put('/{id}', [supportsQuestionController::class, 'update']);
+            Route::delete('/{id}', [supportsQuestionController::class, 'destroy']);
+        });
+
     });
 });
