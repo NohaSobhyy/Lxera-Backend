@@ -1,6 +1,5 @@
 <?php
 
-use App\Http\Controllers\Admin\AgoraHistoryController;
 use App\Http\Controllers\Api\Admin\GroupController;
 use App\Http\Controllers\Api\Admin\AssignmentsController;
 use App\Http\Controllers\Api\Admin\BundleController;
@@ -21,7 +20,6 @@ use App\Http\Controllers\Api\Admin\DiscountController;
 use App\Http\Controllers\Api\Admin\DocumentsController;
 use App\Http\Controllers\Api\Admin\InstallmentsController;
 use App\Http\Controllers\Api\Admin\OfflinePaymentsController;
-use App\Http\Controllers\Api\Admin\OrganizationNotificationsController;
 use App\Http\Controllers\Api\Admin\PlanController;
 use App\Http\Controllers\Api\Admin\QuizzesController;
 use App\Http\Controllers\Api\Admin\RoleController;
@@ -309,12 +307,21 @@ Route::prefix('{url_name}')->group(function () {
             });
         });
 
+        // Plans
         Route::group(['prefix' => 'plans', 'middleware' => 'can:admin_plans'], function () {
             Route::get('/', [PlanController::class, 'index']);
             Route::post('/', [PlanController::class, 'store']);
             Route::put('/{id}', [PlanController::class, 'update']);
             Route::delete('/{id}', [PlanController::class, 'destroy']);
             Route::post('/{id}/active', [PlanController::class, 'makeActive']);
+        });
+
+        // Support
+        Route::group(['prefix' => 'supports'], function () {
+            Route::get('/', [SupportsController::class, 'index']);
+            Route::post('/', [SupportsController::class, 'store']);
+            Route::pUt('/{id}', [SupportsController::class, 'update']);
+            Route::delete('/{id}', [SupportsController::class, 'delete']);
         });
     });
 });
