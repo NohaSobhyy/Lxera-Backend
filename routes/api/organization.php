@@ -25,6 +25,7 @@ use App\Http\Controllers\Api\Admin\QuizzesController;
 use App\Http\Controllers\Api\Admin\RoleController;
 use App\Http\Controllers\Api\Admin\SalesController as AdminSalesController;
 use App\Http\Controllers\Api\Admin\SupportsController;
+use App\Http\Controllers\Api\Admin\SupportsQuestionController;
 use App\Http\Controllers\Api\Admin\UsersNotAccessToContentController;
 use App\Http\Controllers\Api\Admin\WebinarCertificateController;
 use App\Http\Controllers\Api\Panel\NotificationsController;
@@ -320,8 +321,17 @@ Route::prefix('{url_name}')->group(function () {
         Route::group(['prefix' => 'supports'], function () {
             Route::get('/', [SupportsController::class, 'index']);
             Route::post('/', [SupportsController::class, 'store']);
-            Route::pUt('/{id}', [SupportsController::class, 'update']);
+            Route::put('/{id}', [SupportsController::class, 'update']);
             Route::delete('/{id}', [SupportsController::class, 'delete']);
+        });
+
+        // Supports Questions
+        Route::group(['prefix' => 'supports-questions'], function () {
+            Route::get('/', [supportsQuestionController::class, 'index']);
+            Route::get('/{id}', [supportsQuestionController::class, 'show']);
+            Route::post('/', [supportsQuestionController::class, 'store']);
+            Route::put('/{id}', [supportsQuestionController::class, 'update']);
+            Route::delete('/{id}', [supportsQuestionController::class, 'destroy']);
         });
     });
 });
