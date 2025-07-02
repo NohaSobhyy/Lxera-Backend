@@ -183,7 +183,6 @@ Route::group(['namespace' => 'Web', 'middleware' => ['check_mobile_app', 'impers
         Route::post('/validate', 'CertificateValidationController@checkValidate');
     });
 
-
     Route::get('/webinars/{webinar}/apply', 'ApplyController@newApplyToWebinar');
 
     Route::group(['prefix' => 'cart'], function () {

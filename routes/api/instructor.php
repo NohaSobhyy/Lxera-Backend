@@ -40,21 +40,15 @@ Route::middleware(['auth:api'])->group(function () {
 
         Route::group(["prefix" => '/panel'], function () {
 
-
-           
             /***** bundles *****/
             Route::get('bundles/{bundle}/export', ['uses' => 'BundleController@export'])->middleware('api.level-access:teacher');
             Route::apiResource('bundles', BundleController::class)->middleware('api.level-access:teacher');
             Route::apiResource('bundles.webinars', BundleWebinarController::class)->middleware('api.level-access:teacher')->only(['index']);
 
-  
             Route::group(['prefix' => 'notifications'], function () {
                 Route::get('/', [NotificationsController::class, 'list']);
                 Route::post('/{id}/seen', [NotificationsController::class, 'seen']);
             });
-
-
-
 
             /***** bundles *****/
             Route::get('bundles/{bundle}/export', ['uses' => 'BundleController@export'])->middleware('api.level-access:teacher');

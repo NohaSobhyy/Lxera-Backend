@@ -22,7 +22,7 @@ Route::group(['namespace' => 'Auth', 'middleware' => ['api.request.type']], func
 
     // Route::get('/reff/{code}', 'ReferralController@referral');
 
-    // Route::post('register', [AuthController::class, 'register']);
+    Route::post('register', [AuthController::class, 'register']);
 
 });
 

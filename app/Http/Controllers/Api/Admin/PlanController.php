@@ -13,6 +13,8 @@ class PlanController extends Controller
 {
     public function index()
     {
+        $this->authorize('admin_plans_list');
+
         $plans = Plan::get();
         $data = [
             'plans' => $plans
@@ -26,6 +28,8 @@ class PlanController extends Controller
 
     public function update($url_name, Request $request, $id)
     {
+        $this->authorize('admin_plans_edit');
+
         $organization = Organization::where('url_name', $url_name)->first();
         if (!$organization) {
             return response()->json(['message' => 'Organization not found'], 404);
@@ -58,6 +62,8 @@ class PlanController extends Controller
 
     public function store($url_name, Request $request)
     {
+        $this->authorize('admin_plans_create');
+
         $organization = Organization::where('url_name', $url_name)->first();
         if (!$organization) {
             return response()->json(['message' => 'Organization not found'], 404);
@@ -133,6 +139,8 @@ class PlanController extends Controller
 
     public function destroy($url_name, $id)
     {
+        $this->authorize('admin_plans_delete');
+
         $organization = Organization::where('url_name', $url_name)->first();
         if (!$organization) {
             return response()->json(['message' => 'Organization not found'], 404);

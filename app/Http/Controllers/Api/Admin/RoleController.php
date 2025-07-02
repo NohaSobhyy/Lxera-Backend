@@ -18,7 +18,7 @@ class RoleController extends Controller
     {
         $this->authorize('admin_roles_list');
 
-        $roles = Role::with('users')
+        $roles = Role::with('sections')
             ->orderBy('created_at', 'asc')
             ->get();
 
@@ -135,5 +135,27 @@ class RoleController extends Controller
             ];
         }
         Permission::insert($permissions);
+    }
+
+    public function listPermissions() {
+        $permissions = Permission::with(['sections'])->get();
+        return response()->json([
+            'status' => 'success',
+            'data' => $permissions
+        ]);
+    }
+
+    public function showPermissions($url_name, $id) {
+        $organization = Organization::where('url_name', $url_name)->first();
+        if (!$organization) {
+            return response()->json(['message' => 'Organization not found'], 404);
+        }
+        $permissions = Permission::where('role_id', $id)
+        ->with(['sections'])
+        ->get();
+        return response()->json([
+            'status' => 'success',
+            'data' => $permissions
+        ]);
     }
 }
