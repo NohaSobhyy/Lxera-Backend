@@ -84,12 +84,12 @@ return [
   'my_purchases_no_result' => 'لم يتم شراء اي فصول!',
   'my_purchases_no_result_hint' => 'ابدأ التعلم مع افضل المدرسين واستمتع...',
 
- 
 
   'comment' => 'تعليق',
   'comments' => 'التعليقات',
   'reply' => 'رد',
   'replied' => 'تم الرد',
+  'supporter_replied' => 'رد الدعم',
   'not_replied' => 'لم يتم الرد',
   'report' => 'ابلاغ',
   'report_success' => 'تم ارسال بلاغك.',
