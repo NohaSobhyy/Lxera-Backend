@@ -47,7 +47,7 @@ Route::prefix('{url_name}')->group(function () {
         Route::group(['prefix' => 'requirements'], function () {
             Route::get('/list', [RequirementsController::class, 'index']);
             Route::get('/{id}/approve', [RequirementsController::class, 'approve']);
-            Route::get('/{id}/reject', [RequirementsController::class, 'reject'])->middleware('can:admin_requirements_reject');
+            Route::post('/{id}/reject', [RequirementsController::class, 'reject'])->middleware('can:admin_requirements_reject');
             Route::get('/excel', [RequirementsController::class, 'exportExcelRequirements']);
         });
 
