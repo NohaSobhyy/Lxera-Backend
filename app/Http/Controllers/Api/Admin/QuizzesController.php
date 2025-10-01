@@ -50,18 +50,26 @@ class QuizzesController extends Controller
 
         $quizzesData = [];
 
-        foreach ($quizzes as $quiz) {
+       foreach ($quizzes as $quiz) {
             $quizzesData[] = [
-                'quizTitle' => $quiz->webinar->title,
-                'teacher' => $quiz->teacher->full_name,
+                'quizId' => $quiz->id,
+                'quizTitle' => $quiz->title ? $quiz->title : null,
+                'time' => $quiz->time ? $quiz->time : null,
+                'attempt' => $quiz->attempt ? $quiz->attempt : null,
+                'expiry_days' => $quiz->expiry_days ? $quiz->expiry_days : null,
+                'pass_mark' => $quiz->pass_mark ? $quiz->pass_mark : null,
+                'webinarId' => $quiz->webinar ? $quiz->webinar->id : null,
+                'webinarTitle' => $quiz->webinar ? $quiz->webinar->title : null,
+                'teacher' => $quiz->teacher ? $quiz->teacher->full_name : null,
                 'quizQuestions' => $quiz->quizQuestions->count(),
                 'Students' => $quiz->quizResults->pluck('user_id')->count(),
                 'passedStudents' => $quiz->quizResults->where('status', 'passed')->count(),
-                'avgGrade' => $quiz->quizResults->avg('user_grade'),
+                'avgGrade' => $quiz->quizResults->avg('user_grade') ?? 0,
                 'certificate' => $quiz->certificate,
                 'status' => $quiz->status
             ];
         }
+ 
         $data = [
             'quizzesTable' => $quizzesData,
             'quizzes' => $quizzes,
